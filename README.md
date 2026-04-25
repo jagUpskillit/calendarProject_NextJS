@@ -1,36 +1,128 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+﻿# CalendarProject_v1 (DEV Prototype)
 
-## Getting Started
+Associate-facing quarterly training calendar prototype built with Next.js App Router + TypeScript.
 
-First, run the development server:
+## Scope (Phase 1)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Local dataset only (`public/data/sessions.json`)
+- Session browse/search/filter/sort
+- Session details page with registration behavior
+- Support ticket form + localStorage ticket list
+- Assistant-lite panel (rule-based dataset search)
+
+## Tech Stack
+
+- Next.js 16 (App Router)
+- TypeScript
+- Tailwind CSS
+- Vitest (unit tests for parsing/normalization)
+
+## Routes
+
+- `/` — Home listing with search/filters + Assistant-lite
+- `/sessions/[id]` — Session details + related sessions
+- `/support` — Support ticket creation and ticket list
+
+## Project Structure
+
+```text
+src/
+  app/
+    page.tsx
+    sessions/[id]/page.tsx
+    support/page.tsx
+  components/
+    assistant/AssistantLitePanel.tsx
+    sessions/HomeClient.tsx
+    sessions/SessionCard.tsx
+    support/SupportClient.tsx
+    ui/*
+  lib/
+    repository/*
+    services/sessionData.ts
+    services/ticketStorage.ts
+    utils/dataUtils.ts
+    utils/dataUtils.test.ts
+  types/
+    session.ts
+    ticket.ts
+public/
+  data/sessions.json
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+cd "c:\Jag\Trainings\Projects\CalendarProject_v2\calendar-project-v1"
+npm install
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Run (Dev)
 
-## Learn More
+```powershell
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open `http://localhost:3000`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Build (Production Check)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```powershell
+npm run build
+npm run start
+```
 
-## Deploy on Vercel
+## Tests
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```powershell
+npm run test
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Watch mode:
+
+```powershell
+npm run test:watch
+```
+
+## How to change dataset
+
+1. Edit `public/data/sessions.json`.
+2. Keep each record aligned with `Session` in `src/types/session.ts`.
+3. Required fields for robust behavior:
+   - `id` (stable unique)
+   - `programName`
+   - `deliveryMode` (`Virtual` | `In-Person` | `Hybrid` | `Unknown`)
+4. Optional fields are supported safely (no crash on missing values):
+   - `objectives`, `facilitator`, `scheduleRaw`, `dateISO`, `geo`, `targetAudience`, `registrationLink`, etc.
+
+## Registration behavior (Phase 1)
+
+- If `registrationLink` exists and is valid: **Register** opens in a new tab.
+- If missing/null: user is redirected to `/support` with session preselected.
+
+## Support persistence
+
+Support tickets are stored in browser localStorage under key:
+
+- `calendarproject_v1_support_tickets`
+
+This persists across refreshes in the same browser profile.
+
+## Data-layer abstraction for future migration
+
+The repository contract is defined in:
+
+- `src/lib/repository/SessionRepository.ts`
+
+Phase 1 implementation:
+
+- `src/lib/repository/LocalSessionRepository.ts`
+
+When SharePoint/Dataverse access is available, add a new repository implementation and swap the binding without changing page/component code.
+
+## Known Phase 1 limitations
+
+- No authentication
+- No seat validation/waitlist/reminders/email invites
+- No backend DB (local JSON + localStorage only)
+- Assistant is rule-based search (not LLM)
