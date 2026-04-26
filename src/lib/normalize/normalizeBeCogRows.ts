@@ -60,6 +60,67 @@ function hash6(text: string): string {
   return h.toString(16).padStart(8, "0").slice(0, 6);
 }
 
+function keyPart(value: string | number | null | undefined): string {
+  if (value == null) return "";
+  return String(value).replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function makeSessionDuplicateKey(input: {
+  baseId: string;
+  facilitator?: string;
+  location?: string;
+  targetAudience?: string;
+  scheduleRaw?: string;
+  batchSize?: number | null;
+}): string {
+  return [
+    input.baseId,
+    keyPart(input.facilitator),
+    keyPart(input.location),
+    keyPart(input.targetAudience),
+    keyPart(input.scheduleRaw),
+    keyPart(input.batchSize),
+  ].join("|");
+}
+
+function chooseString(current?: string, incoming?: string): string | undefined {
+  if (!current && !incoming) return undefined;
+  if (!current) return incoming;
+  if (!incoming) return current;
+  return incoming.length > current.length ? incoming : current;
+}
+
+function chooseNumber(current?: number | null, incoming?: number | null): number | null | undefined {
+  if (typeof current === "number") return current;
+  if (typeof incoming === "number") return incoming;
+  if (current === null || incoming === null) return null;
+  return undefined;
+}
+
+function chooseLink(current?: string | null, incoming?: string | null): string | null | undefined {
+  if (typeof current === "string" && current) return current;
+  if (typeof incoming === "string" && incoming) return incoming;
+  if (current === null || incoming === null) return null;
+  return undefined;
+}
+
+function mergeSessionDetails(existing: Session, incoming: Omit<Session, "id">): Session {
+  return {
+    ...existing,
+    objectives: chooseString(existing.objectives, incoming.objectives),
+    formatDuration: chooseString(existing.formatDuration, incoming.formatDuration),
+    facilitator: chooseString(existing.facilitator, incoming.facilitator),
+    scheduleRaw: chooseString(existing.scheduleRaw, incoming.scheduleRaw),
+    dateISO: chooseString(existing.dateISO, incoming.dateISO),
+    geo: chooseString(existing.geo, incoming.geo),
+    location: chooseString(existing.location, incoming.location),
+    targetAudience: chooseString(existing.targetAudience, incoming.targetAudience),
+    batchSize: chooseNumber(existing.batchSize, incoming.batchSize),
+    registrationLink: chooseLink(existing.registrationLink, incoming.registrationLink),
+    notes: chooseString(existing.notes, incoming.notes),
+  };
+}
+
 function makeUniqueSessionId(baseId: string, row: RawBeCogRow, seenIds: Set<string>): string {
   if (!seenIds.has(baseId)) {
     seenIds.add(baseId);
@@ -95,6 +156,7 @@ export function normalizeBeCogRows(
   const sessions: Session[] = [];
 
   const seenSessionIds = new Set<string>();
+  const sessionIndexByDuplicateKey = new Map<string, number>();
   const programMap = new Map<string, ProgramMaster>();
   const facilitatorSet = new Set<string>();
   const geoSet = new Set<string>();
@@ -127,15 +189,16 @@ export function normalizeBeCogRows(
     const deliveryMode = inferDeliveryMode(formatDuration, location);
 
     const baseId = makeStableId(programName, dateISO, geo);
-    const id = makeUniqueSessionId(baseId, row, seenSessionIds);
-    if (id !== baseId) {
-      warnings.push(
-        `Row ${row.source.rowNumber ?? "?"}: duplicate session id \"${baseId}\" resolved to \"${id}\".`
-      );
-    }
+    const duplicateKey = makeSessionDuplicateKey({
+      baseId,
+      facilitator,
+      location,
+      targetAudience,
+      scheduleRaw,
+      batchSize,
+    });
 
-    sessions.push({
-      id,
+    const draftSession: Omit<Session, "id"> = {
       programName,
       objectives,
       formatDuration,
@@ -155,7 +218,28 @@ export function normalizeBeCogRows(
         sheetName: row.source.sheetName,
         rowNumber: row.source.rowNumber,
       },
-    });
+    };
+
+    const existingIndex = sessionIndexByDuplicateKey.get(duplicateKey);
+    if (existingIndex !== undefined) {
+      sessions[existingIndex] = mergeSessionDetails(sessions[existingIndex], draftSession);
+      warnings.push(
+        `Row ${row.source.rowNumber ?? "?"}: duplicate session row merged into "${sessions[existingIndex].id}".`
+      );
+
+      if (row.source.fileName) fileNames.add(row.source.fileName);
+      continue;
+    }
+
+    const id = makeUniqueSessionId(baseId, row, seenSessionIds);
+    if (id !== baseId) {
+      warnings.push(
+        `Row ${row.source.rowNumber ?? "?"}: duplicate session id \"${baseId}\" resolved to \"${id}\".`
+      );
+    }
+
+    sessions.push({ id, ...draftSession });
+    sessionIndexByDuplicateKey.set(duplicateKey, sessions.length - 1);
 
     if (row.source.fileName) fileNames.add(row.source.fileName);
 

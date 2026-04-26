@@ -68,6 +68,16 @@ function getCell(row: string[], map: Partial<Record<CanonicalSessionField, numbe
   return value === "" ? undefined : value;
 }
 
+function inferGeoFromSheetName(sheetName: string): string | undefined {
+  const normalized = norm(sheetName).toLowerCase();
+  if (normalized.startsWith("india")) return "India";
+  if (normalized.startsWith("apac")) return "APAC";
+  if (normalized.startsWith("eu")) return "EU";
+  if (normalized.startsWith("na")) return "NA";
+  if (normalized.startsWith("global")) return "Global";
+  return undefined;
+}
+
 function isHeadingLikeRow(programName: string, row: string[]): boolean {
   const nonEmpty = row.map(norm).filter(Boolean);
   if (nonEmpty.length <= 2 && CAPABILITY_HEADING_RE.test(programName)) return true;
@@ -135,7 +145,7 @@ export function parseBeCogWorkbookArrayBuffer(arrayBuffer: ArrayBuffer, fileName
           scheduleRaw: getCell(row, header.map, "scheduleRaw"),
           location: getCell(row, header.map, "location"),
           targetAudience: getCell(row, header.map, "targetAudience"),
-          geo: getCell(row, header.map, "geo"),
+          geo: getCell(row, header.map, "geo") ?? inferGeoFromSheetName(sheetName),
           batchSize: getCell(row, header.map, "batchSize"),
           registrationLink: getCell(row, header.map, "registrationLink"),
           notes: getCell(row, header.map, "notes"),

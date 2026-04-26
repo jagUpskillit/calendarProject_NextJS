@@ -49,4 +49,20 @@ describe("parseBeCogWorkbookArrayBuffer", () => {
 
     expect(result.rawRows.map((r) => r.programName)).toEqual(["Session A"]);
   });
+
+  it("infers geo from sheet name when the geo column is blank", () => {
+    const data: (string | number)[][] = [
+      ["Program Name", "Facilitator", "Schedule", "Geo"],
+      ["Communicating Across Cultures", "Sridatri Panda", "16-Apr", ""],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "EU SM-AD");
+
+    const result = parseBeCogWorkbookArrayBuffer(workbookToArrayBuffer(wb), "becog.xlsx");
+
+    expect(result.rawRows).toHaveLength(1);
+    expect(result.rawRows[0].geo).toBe("EU");
+  });
 });

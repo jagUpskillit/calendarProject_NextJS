@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import type { Session, DeliveryMode, ImportMetadata } from "@/types";
 import { SessionCard } from "@/components/sessions/SessionCard";
@@ -174,45 +175,69 @@ export function HomeClient() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 pb-28">
 
-      {/* ── Page heading ─────────────────────────────────────────────── */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Training Sessions</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Browse and register for quarterly training programs.
-        </p>
-        <div className="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-600">
+      <section className="relative overflow-hidden rounded-[30px] border border-white/70 bg-[linear-gradient(120deg,rgba(58,42,161,0.96),rgba(40,118,181,0.94)_58%,rgba(78,184,215,0.9))] px-6 py-7 text-white shadow-[0_24px_50px_rgba(40,118,181,0.18)] sm:px-8">
+        <div className="absolute right-0 top-0 h-36 w-36 translate-x-10 -translate-y-10 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 h-28 w-28 -translate-x-8 translate-y-8 rounded-full bg-indigo-200/20 blur-2xl" />
+        <div className="relative flex flex-wrap items-end justify-between gap-5">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-white/70">Learning Calendar</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Training Sessions</h1>
+            <p className="mt-3 max-w-2xl text-sm text-white/85 sm:text-base">
+              Browse the quarterly learning portfolio with a cleaner, portal-inspired experience for discovery, filtering, and AI-assisted insights.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white/90 backdrop-blur-sm">
+            <p className="text-xs uppercase tracking-[0.22em] text-white/65">Catalog snapshot</p>
+            <p className="mt-1 text-2xl font-semibold">{allSessions.length}</p>
+            <p className="text-xs text-white/75">sessions currently loaded</p>
+          </div>
+        </div>
+        <div className="relative mt-5 rounded-2xl border border-white/16 bg-white/10 px-4 py-3 text-xs text-white/90 backdrop-blur-sm">
           {isImportedData && importMetadata ? (
             <>
-              <span className="font-medium text-green-700">Using imported data.</span>{" "}
+              <span className="font-semibold text-emerald-200">Using imported data.</span>{" "}
               Last updated {new Date(importMetadata.importedAt).toLocaleString()} · Files: {importMetadata.fileNames.join(", ") || "N/A"}
             </>
           ) : (
-            <span className="font-medium text-amber-700">Using sample data.</span>
+            <span className="font-semibold text-amber-200">No imported data found.</span>
           )}
         </div>
-      </div>
+      </section>
 
-      {/* ── Search bar ───────────────────────────────────────────────── */}
-      <div className="relative">
-        <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">
-          🔍
-        </span>
-        <input
-          type="search"
-          placeholder="Search by program name, facilitator, or objectives…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="w-full rounded-xl border border-gray-300 bg-white pl-9 pr-4 py-3 text-sm
-            shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          aria-label="Search sessions"
-        />
-      </div>
+      <section className="rounded-[28px] border border-white/70 bg-white/78 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-md sm:p-6">
+        <div className="relative">
+          <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
+            🔎
+          </span>
+          <input
+            type="search"
+            placeholder="Search by program name, facilitator, or objectives…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 py-3.5 text-sm text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.05)] outline-none transition-all focus:border-[#2876b5] focus:ring-2 focus:ring-[#2876b5]/15"
+            aria-label="Search sessions"
+          />
+        </div>
 
-      {/* ── Filter bar ───────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap gap-4 items-end">
+        <div className="mt-5 rounded-2xl border border-slate-100 bg-[linear-gradient(180deg,#ffffff,rgba(244,247,252,0.9))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Refine your results</h2>
+              <p className="text-xs text-slate-500">Filter by region, audience, facilitator, capability, or delivery format.</p>
+            </div>
+            {hasActiveFilters && (
+              <button
+                onClick={resetFilters}
+                className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+              >
+                ✕ Clear all
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-end gap-4">
           <FilterSelect
             label="Geo / Region"
             options={toOptions(facets.geo)}
@@ -252,39 +277,41 @@ export function HomeClient() {
             value={sortField}
             onChange={(e) => setSortField(e.target.value as "date" | "name")}
           />
-
-          {hasActiveFilters && (
-            <button
-              onClick={resetFilters}
-              className="self-end rounded-md border border-gray-300 px-3 py-2 text-xs
-                text-gray-600 hover:bg-gray-50 transition-colors"
-            >
-              ✕ Clear all
-            </button>
-          )}
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* ── Results count ────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between text-sm text-gray-500">
+      <div className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/70 px-4 py-3 text-sm text-slate-500 shadow-[0_10px_26px_rgba(15,23,42,0.05)] backdrop-blur-sm">
         <span>
-          Showing <strong className="text-gray-900">{filtered.length}</strong> of{" "}
-          <strong className="text-gray-900">{allSessions.length}</strong> sessions
+          Showing <strong className="text-slate-900">{filtered.length}</strong> of{" "}
+          <strong className="text-slate-900">{allSessions.length}</strong> sessions
         </span>
         {hasActiveFilters && (
-          <span className="text-blue-600">Filters active</span>
+          <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">Filters active</span>
         )}
       </div>
 
       {/* ── Session grid ─────────────────────────────────────────────── */}
-      {filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center">
+      {filtered.length === 0 && allSessions.length === 0 ? (
+        <div className="rounded-[24px] border border-dashed border-slate-300 bg-white/85 py-16 text-center shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+          <p className="text-3xl">📥</p>
+          <p className="mt-2 font-medium text-slate-700">No imported sessions yet</p>
+          <p className="mt-1 text-sm text-slate-500">Clear storage now leaves the catalog empty until you upload fresh data.</p>
+          <Link
+            href="/admin/import"
+            className="mt-4 inline-flex rounded-full bg-[linear-gradient(90deg,#3a2aa1,#2876b5)] px-4 py-2 text-sm text-white shadow-[0_12px_24px_rgba(58,42,161,0.18)]"
+          >
+            Go to Admin Import
+          </Link>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-[24px] border border-dashed border-slate-300 bg-white/85 py-16 text-center shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur-sm">
           <p className="text-3xl">🔍</p>
-          <p className="mt-2 font-medium text-gray-700">No sessions match your filters</p>
-          <p className="text-sm text-gray-500 mt-1">Try adjusting or clearing the filters above.</p>
+          <p className="mt-2 font-medium text-slate-700">No sessions match your filters</p>
+          <p className="mt-1 text-sm text-slate-500">Try adjusting or clearing the filters above.</p>
           <button
             onClick={resetFilters}
-            className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+            className="mt-4 rounded-full bg-[linear-gradient(90deg,#3a2aa1,#2876b5)] px-4 py-2 text-sm text-white shadow-[0_12px_24px_rgba(58,42,161,0.18)]"
           >
             Clear filters
           </button>

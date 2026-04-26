@@ -83,6 +83,8 @@ describe("dataUtils parsing and normalization", () => {
 
   it("inferDeliveryMode infers from format/location text", () => {
     expect(inferDeliveryMode("VILT | 2 hours", "Teams")).toBe("Virtual");
+    expect(inferDeliveryMode("Webinar | 1.5 hours", undefined)).toBe("Virtual");
+    expect(inferDeliveryMode("Self-paced(30 mins)", undefined)).toBe("Virtual");
     expect(inferDeliveryMode("ILT", "Classroom A")).toBe("In-Person");
     expect(inferDeliveryMode("Hybrid", "Office + Teams")).toBe("Hybrid");
     expect(inferDeliveryMode(undefined, undefined)).toBe("Unknown");

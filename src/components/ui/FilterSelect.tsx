@@ -7,14 +7,13 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
 
 export function FilterSelect({ label, options, ...props }: SelectProps) {
   return (
-    <div className="flex flex-col gap-1 min-w-[140px]">
-      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+    <div className="flex min-w-[140px] flex-col gap-1.5">
+      <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {label}
       </label>
       <select
         {...props}
-        className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700
-          shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="rounded-xl border border-slate-200 bg-white/90 px-3 py-2.5 text-sm text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.05)] outline-none transition-all focus:border-[#2876b5] focus:ring-2 focus:ring-[#2876b5]/15"
       >
         <option value="">All</option>
         {options.map((o) => (

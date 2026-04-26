@@ -3,15 +3,14 @@
  *
  * ┌─────────────────────────────────────────────────────────────────┐
  * │  This interface is the ONLY contract that UI/pages depend on.   │
- * │  Swap the implementation to change the data source:             │
- * │    Phase 1 → LocalSessionRepository  (bundled JSON)             │
- * │    Phase 2 → SharePointSessionRepository  (MS Graph / SP REST)  │
- * │    Phase 3 → DataverseSessionRepository   (Power Platform)      │
+ * │  Swap the implementation to change the backing data source.     │
+ * │    Current → browser import storage                             │
+ * │    Next    → SharePointSessionRepository  (MS Graph / SP REST)  │
+ * │    Later   → DataverseSessionRepository   (Power Platform)      │
  * └─────────────────────────────────────────────────────────────────┘
  *
- * All methods are async to keep the interface compatible with remote
- * data sources even though the Phase 1 implementation is synchronous
- * under the hood.
+ * All methods are async to keep the interface compatible with local or
+ * remote data sources.
  */
 
 import type { Session, SessionFilter, SessionSort } from "@/types";

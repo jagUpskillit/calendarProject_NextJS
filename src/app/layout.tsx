@@ -14,13 +14,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
-      <body className="min-h-full flex flex-col bg-gray-50 text-gray-900 antialiased">
+      <body className="min-h-full flex flex-col text-gray-900 antialiased">
         <SiteHeader />
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
           {children}
         </main>
-        <footer className="border-t border-gray-200 bg-white py-4 text-center text-xs text-gray-400">
-          CalendarProject_v1 · DEV Prototype · Phase 1 · Local data only
+        <footer className="border-t border-white/60 bg-[linear-gradient(90deg,rgba(58,42,161,0.96),rgba(40,118,181,0.94),rgba(78,184,215,0.92))] py-4 text-center text-xs text-white/90 shadow-[0_-10px_30px_rgba(17,32,59,0.08)]">
+          CalendarProject_v1 · DEV Prototype · Phase 1 · Local browser data only
         </footer>
       </body>
     </html>

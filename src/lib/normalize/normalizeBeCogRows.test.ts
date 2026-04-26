@@ -34,7 +34,7 @@ describe("normalizeBeCogRows", () => {
     expect(result.metadata.programCount).toBe(1);
   });
 
-  it("resolves duplicate base ids to unique session ids", () => {
+  it("merges duplicate repeated rows instead of creating extra sessions", () => {
     const rows: RawBeCogRow[] = [
       {
         programName: "Communicating Across Cultures",
@@ -46,6 +46,31 @@ describe("normalizeBeCogRows", () => {
         programName: "Communicating Across Cultures",
         scheduleRaw: "16-Apr",
         geo: "Global",
+        source: { type: "becog", fileName: "be1.xlsx", sheetName: "APAC", rowNumber: 11 },
+      },
+    ];
+
+    const result = normalizeBeCogRows(rows, { holidays: [] });
+
+    expect(result.sessions).toHaveLength(1);
+    expect(result.warnings.some((w) => /duplicate session row merged/i.test(w))).toBe(true);
+    expect(result.warnings.some((w) => /duplicate session id/i.test(w))).toBe(false);
+  });
+
+  it("keeps truly distinct rows even when the base id collides", () => {
+    const rows: RawBeCogRow[] = [
+      {
+        programName: "Communicating Across Cultures",
+        scheduleRaw: "16-Apr",
+        geo: "Global",
+        targetAudience: "All Associates",
+        source: { type: "becog", fileName: "be1.xlsx", sheetName: "Global", rowNumber: 10 },
+      },
+      {
+        programName: "Communicating Across Cultures",
+        scheduleRaw: "16-Apr",
+        geo: "Global",
+        targetAudience: "Senior Associates",
         source: { type: "becog", fileName: "be1.xlsx", sheetName: "Global", rowNumber: 11 },
       },
     ];

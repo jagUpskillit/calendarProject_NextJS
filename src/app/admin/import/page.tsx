@@ -102,7 +102,7 @@ export default function AdminImportPage() {
     calendarStorage.clearAll();
     setBundle(null);
     setWarnings([]);
-    setClearMessage("✅ Imported calendar data cleared. App will now use sample data until you import again.");
+    setClearMessage("✅ Imported calendar data cleared. No sessions will be shown until you import again.");
     setTimeout(() => setClearMessage(""), 5000);
   }
 

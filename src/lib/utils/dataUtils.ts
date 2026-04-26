@@ -3,7 +3,7 @@
  *
  * Rules:
  *  - No function throws.  All return safe defaults on bad input.
- *  - All functions are side-effect free and independently unit-testable.
+// Shared in-memory filter + sort helpers for session repositories
  *  - No framework dependencies — plain TypeScript only.
  */
 
@@ -153,7 +153,7 @@ export function inferDeliveryMode(
 ): DeliveryMode {
   const s = `${formatDuration ?? ""} ${location ?? ""}`.toLowerCase();
   if (/hybrid/.test(s)) return "Hybrid";
-  if (/virtual|online|teams|zoom|webex|vilt/.test(s)) return "Virtual";
+  if (/virtual|online|teams|zoom|webex|vilt|webinar|self[-\s]?paced/.test(s)) return "Virtual";
   if (/in.?person|classroom|\bilt\b|face.?to.?face|\bf2f\b/.test(s)) return "In-Person";
   return "Unknown";
 }
@@ -182,7 +182,7 @@ export function deriveTags(
 }
 
 // ---------------------------------------------------------------------------
-// In-memory filter + sort helpers (used by LocalSessionRepository)
+// Shared in-memory filter + sort helpers for session repositories
 // ---------------------------------------------------------------------------
 
 /** Case-insensitive substring check */

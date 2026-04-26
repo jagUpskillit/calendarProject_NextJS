@@ -6,20 +6,14 @@ import { CalendarStorage } from "@/lib/storage/CalendarStorage";
 /**
  * StorageSessionRepository
  *
- * Priority order:
- *  1) Imported sessions from CalendarStorage (localStorage)
- *  2) Fallback repository (bundled sample JSON)
+ * Reads imported sessions from `CalendarStorage` only.
+ * When storage is empty, the app surfaces an empty state.
  */
 export class StorageSessionRepository implements SessionRepository {
-  constructor(
-    private readonly storage: CalendarStorage,
-    private readonly fallbackRepository: SessionRepository
-  ) {}
+  constructor(private readonly storage: CalendarStorage) {}
 
   private async loadPreferredSessions(): Promise<Session[]> {
-    const imported = this.storage.loadSessions();
-    if (imported.length > 0) return imported;
-    return this.fallbackRepository.getAll();
+    return this.storage.loadSessions();
   }
 
   async getAll(): Promise<Session[]> {
