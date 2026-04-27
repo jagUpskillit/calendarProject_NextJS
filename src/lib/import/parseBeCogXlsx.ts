@@ -120,6 +120,7 @@ export function parseBeCogWorkbookArrayBuffer(arrayBuffer: ArrayBuffer, fileName
       }
 
       let blankProgramNameStreak = 0;
+      let currentCapability: string | undefined;
 
       for (let i = header.headerIndex + 1; i < rows.length; i++) {
         const row = rows[i] ?? [];
@@ -133,7 +134,9 @@ export function parseBeCogWorkbookArrayBuffer(arrayBuffer: ArrayBuffer, fileName
         blankProgramNameStreak = 0;
 
         if (isHeadingLikeRow(programName, row)) {
-          warnings.push(`Sheet \"${sheetName}\" row ${i + 1}: skipped non-session heading/comment row.`);
+          // Capture the capability label from this heading row
+          currentCapability = programName;
+          warnings.push(`Sheet \"${sheetName}\" row ${i + 1}: capability heading detected — "${currentCapability}".`);
           continue;
         }
 
@@ -149,6 +152,7 @@ export function parseBeCogWorkbookArrayBuffer(arrayBuffer: ArrayBuffer, fileName
           batchSize: getCell(row, header.map, "batchSize"),
           registrationLink: getCell(row, header.map, "registrationLink"),
           notes: getCell(row, header.map, "notes"),
+          capability: currentCapability,
           source: {
             type: "becog",
             fileName,

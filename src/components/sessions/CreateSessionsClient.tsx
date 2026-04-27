@@ -11,8 +11,10 @@ import type {
   Session,
 } from "@/types";
 
+
 interface FormData {
   programName: string;
+  capability: string;
   facilitator: string;
   date: string;
   numberOfSessions: number;
@@ -28,8 +30,10 @@ interface FormData {
   remarks: string;
 }
 
+
 const DEFAULT_FORM_STATE: FormData = {
   programName: "",
+  capability: "",
   facilitator: "",
   date: "",
   numberOfSessions: 1,
@@ -68,7 +72,9 @@ export default function CreateSessionsClient() {
   const [mode, setMode] = useState<"quick" | "grid">("quick");
 
   // Masters loaded from storage
+
   const [programs, setPrograms] = useState<ProgramMaster[]>([]);
+  const [capabilities, setCapabilities] = useState<{ capabilityName: string }[]>([]);
   const [facilitators, setFacilitators] = useState<FacilitatorMaster[]>([]);
   const [holidays, setHolidays] = useState<HolidayMaster[]>([]);
   const [metadata, setMetadata] = useState<ImportMetadata | null>(null);
@@ -91,14 +97,17 @@ export default function CreateSessionsClient() {
   const [loadError, setLoadError] = useState("");
 
   // Load masters on mount
+
   useEffect(() => {
     const progs = calendarStorage.loadProgramMasters();
+    const caps = calendarStorage.loadCapabilityMasters();
     const facils = calendarStorage.loadFacilitatorMasters();
     const hols = calendarStorage.loadHolidayMasters();
     const meta = calendarStorage.loadMetadata();
     const existingSessions = calendarStorage.loadSessions();
 
     setPrograms(progs);
+    setCapabilities(caps);
     setFacilitators(facils);
     setHolidays(hols);
     setMetadata(meta);
@@ -292,10 +301,12 @@ export default function CreateSessionsClient() {
     }
   };
 
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!form.programName.trim()) newErrors.programName = "Required";
+    if (!form.capability.trim()) newErrors.capability = "Required";
     if (!form.facilitator.trim()) newErrors.facilitator = "Required";
     if (!form.date) newErrors.date = "Required";
     if (!form.enteredBy.trim()) newErrors.enteredBy = "Required";
@@ -346,9 +357,11 @@ export default function CreateSessionsClient() {
     const timestamp = Date.now();
     const sessionId = `${slugify(form.programName)}-${form.date || "undated"}-${timestamp}`;
 
+
     const newSession: Session = {
       id: sessionId,
       programName: form.programName.trim(),
+      capability: form.capability.trim(),
       objectives: selectedProgram?.objectives,
       formatDuration: selectedProgram?.formatDuration,
       deliveryMode: toDeliveryMode(selectedProgram?.formatDuration),
@@ -620,6 +633,34 @@ export default function CreateSessionsClient() {
                 {errors.programName && (
                   <p className="mt-1 text-sm text-red-600">
                     {errors.programName}
+                  </p>
+                )}
+              </div>
+
+              {/* Capability Dropdown */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Capability <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={form.capability}
+                  onChange={(e) => setForm((prev) => ({ ...prev, capability: e.target.value }))}
+                  className={`w-full px-4 py-3 rounded-xl border-2 outline-none transition ${
+                    errors.capability
+                      ? "border-red-500"
+                      : "border-gray-200 focus:border-indigo-500"
+                  }`}
+                >
+                  <option value="">Select capability</option>
+                  {capabilities.map((cap) => (
+                    <option key={cap.capabilityName} value={cap.capabilityName}>
+                      {cap.capabilityName}
+                    </option>
+                  ))}
+                </select>
+                {errors.capability && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.capability}
                   </p>
                 )}
               </div>

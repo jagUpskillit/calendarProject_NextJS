@@ -71,6 +71,21 @@ export default function AdminImportPage() {
       };
 
       calendarStorage.saveBundle(nextBundle);
+
+      // Merge newly discovered capabilities with any already in the master
+      const existingCaps = calendarStorage.loadCapabilityMasters ? calendarStorage.loadCapabilityMasters() : [];
+      const capKeySet = new Set(existingCaps.map((c) => c.capabilityName.trim().toLowerCase()));
+      const mergedCaps = [...existingCaps];
+      for (const cap of normalized.masters.capabilities) {
+        if (cap.capabilityName && !capKeySet.has(cap.capabilityName.trim().toLowerCase())) {
+          mergedCaps.push(cap);
+          capKeySet.add(cap.capabilityName.trim().toLowerCase());
+        }
+      }
+      if (calendarStorage.saveCapabilityMasters) {
+        calendarStorage.saveCapabilityMasters(mergedCaps.sort((a, b) => a.capabilityName.localeCompare(b.capabilityName)));
+      }
+
       setBundle(nextBundle);
       setWarnings(metadata.warnings);
     } catch (err) {

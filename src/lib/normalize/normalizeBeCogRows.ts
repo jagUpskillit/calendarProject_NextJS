@@ -19,6 +19,7 @@ export interface NormalizeBeCogResult {
     programs: ProgramMaster[];
     facilitators: FacilitatorMaster[];
     geos: GeoMaster[];
+    capabilities: { capabilityName: string }[];
   };
   metadata: ImportMetadata;
   warnings: string[];
@@ -160,6 +161,7 @@ export function normalizeBeCogRows(
   const programMap = new Map<string, ProgramMaster>();
   const facilitatorSet = new Set<string>();
   const geoSet = new Set<string>();
+  const capabilitySet = new Set<string>();
   const fileNames = new Set<string>();
 
   for (const row of rawRows) {
@@ -198,6 +200,9 @@ export function normalizeBeCogRows(
       batchSize,
     });
 
+    const capability = clean(row.capability);
+    if (capability) capabilitySet.add(capability);
+
     const draftSession: Omit<Session, "id"> = {
       programName,
       objectives,
@@ -212,6 +217,7 @@ export function normalizeBeCogRows(
       batchSize,
       registrationLink,
       notes,
+      capability,
       source: {
         type: row.source.type,
         fileName: row.source.fileName,
@@ -262,6 +268,7 @@ export function normalizeBeCogRows(
   const programs = Array.from(programMap.values()).sort((a, b) => a.programName.localeCompare(b.programName));
   const facilitators = Array.from(facilitatorSet).sort().map((name) => ({ name }));
   const geos = Array.from(geoSet).sort().map((geoName) => ({ geoName }));
+  const capabilities = Array.from(capabilitySet).sort().map((capabilityName) => ({ capabilityName }));
 
   const metadata: ImportMetadata = {
     importedAt: options?.importedAtISO ?? new Date().toISOString(),
@@ -276,7 +283,7 @@ export function normalizeBeCogRows(
 
   return {
     sessions,
-    masters: { programs, facilitators, geos },
+    masters: { programs, facilitators, geos, capabilities },
     metadata,
     warnings,
   };

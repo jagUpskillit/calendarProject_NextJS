@@ -29,6 +29,8 @@ export interface RawImportSessionRow {
   batchSize?: string;
   registrationLink?: string;
   notes?: string;
+  /** Capability heading row this session falls under (e.g. "Demonstrate a Strategic and Enterprise mindset") */
+  capability?: string;
   source: {
     type: "becog" | "planning";
     fileName: string;

@@ -17,8 +17,11 @@ const STORAGE_KEYS = {
   facilitatorMasters: "calendarproject_v1.import.facilitatorMasters",
   geoMasters: "calendarproject_v1.import.geoMasters",
   holidayMasters: "calendarproject_v1.import.holidayMasters",
+  capabilityMasters: "calendarproject_v1.import.capabilityMasters",
   metadata: "calendarproject_v1.import.metadata",
 };
+
+
 
 function canUseStorage(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -57,6 +60,18 @@ function ensureSchemaVersion(): void {
 }
 
 export class CalendarStorage {
+  // ...existing master methods...
+
+  saveCapabilityMasters(items: { capabilityName: string }[]): void {
+    ensureSchemaVersion();
+    safeWrite(STORAGE_KEYS.capabilityMasters, items);
+  }
+
+  loadCapabilityMasters(): { capabilityName: string }[] {
+    ensureSchemaVersion();
+    const data = safeRead<unknown[]>(STORAGE_KEYS.capabilityMasters, []);
+    return Array.isArray(data) ? (data as { capabilityName: string }[]) : [];
+  }
   saveSessions(sessions: Session[]): void {
     ensureSchemaVersion();
     safeWrite(STORAGE_KEYS.sessions, sessions);

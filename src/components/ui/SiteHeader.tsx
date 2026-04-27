@@ -20,8 +20,8 @@ export function SiteHeader() {
           <Link href="/" className="rounded-full px-3 py-2 transition-colors hover:bg-indigo-50 hover:text-[#3a2aa1]">
             Sessions
           </Link>
-          <Link href="/insights" className="rounded-full px-3 py-2 transition-colors hover:bg-indigo-50 hover:text-[#3a2aa1]">
-            Insights
+          <Link href="/admin/create" className="rounded-full px-3 py-2 transition-colors hover:bg-indigo-50 hover:text-[#3a2aa1]">
+            Create Sessions
           </Link>
           <Link href="/admin/import" className="rounded-full px-3 py-2 transition-colors hover:bg-indigo-50 hover:text-[#3a2aa1]">
             Admin Import
@@ -29,8 +29,8 @@ export function SiteHeader() {
           <Link href="/admin/masters" className="rounded-full px-3 py-2 transition-colors hover:bg-indigo-50 hover:text-[#3a2aa1]">
             Masters
           </Link>
-          <Link href="/admin/create" className="rounded-full px-3 py-2 transition-colors hover:bg-indigo-50 hover:text-[#3a2aa1]">
-            Create Sessions
+          <Link href="/insights" className="rounded-full px-3 py-2 transition-colors hover:bg-indigo-50 hover:text-[#3a2aa1]">
+            Insights
           </Link>
           <Link href="/support" className="rounded-full px-3 py-2 transition-colors hover:bg-indigo-50 hover:text-[#3a2aa1]">
             Support

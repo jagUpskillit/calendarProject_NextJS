@@ -9,12 +9,20 @@ import type {
   ImportMetadata,
   ProgramMaster,
 } from "@/types";
+// --- Capability Master Type ---
+export interface CapabilityMaster {
+  capabilityName: string;
+}
 
 const emptyProgram: ProgramMaster = {
   programName: "",
   objectives: "",
   formatDuration: "",
   defaultFacilitator: "",
+};
+
+const emptyCapability: CapabilityMaster = {
+  capabilityName: "",
 };
 
 const emptyHoliday: HolidayMaster = {
@@ -37,6 +45,9 @@ export default function MastersCrudClient() {
   const [geos, setGeos] = useState<GeoMaster[]>([]);
   const [holidays, setHolidays] = useState<HolidayMaster[]>([]);
   const [metadata, setMetadata] = useState<ImportMetadata | null>(null);
+
+  const [capabilities, setCapabilities] = useState<CapabilityMaster[]>([]);
+
 
   const [programForm, setProgramForm] = useState<ProgramMaster>(emptyProgram);
   const [editingProgramName, setEditingProgramName] = useState<string | null>(null);
@@ -61,6 +72,9 @@ export default function MastersCrudClient() {
   const [pendingReplaceFile, setPendingReplaceFile] = useState<File | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
+  const [capabilityForm, setCapabilityForm] = useState<CapabilityMaster>(emptyCapability);
+  const [editingCapabilityName, setEditingCapabilityName] = useState<string | null>(null);
+
   useEffect(() => {
     reloadMasters();
   }, []);
@@ -69,6 +83,12 @@ export default function MastersCrudClient() {
     () => sortBy(programs, (p) => p.programName),
     [programs]
   );
+
+  const sortedCapabilities = useMemo(
+    () => sortBy(capabilities, (c) => c.capabilityName),
+    [capabilities]
+  );
+
 
   const sortedFacilitators = useMemo(
     () => sortBy(facilitators, (f) => f.name),
@@ -93,6 +113,7 @@ export default function MastersCrudClient() {
     setGeos(calendarStorage.loadGeoMasters());
     setHolidays(calendarStorage.loadHolidayMasters());
     setMetadata(calendarStorage.loadMetadata());
+    setCapabilities(calendarStorage.loadCapabilityMasters ? calendarStorage.loadCapabilityMasters() : []);
   }
 
   function refreshMetadataCounts(next?: Partial<ImportMetadata>) {
@@ -188,6 +209,66 @@ export default function MastersCrudClient() {
       setEditingProgramName(null);
     }
     setSuccess("Program deleted.");
+  }
+
+  function handleCreateOrUpdateCapability() {
+    setStatus(null);
+    const capabilityName = capabilityForm.capabilityName.trim();
+    if (!capabilityName) {
+      setError("Capability name is required.");
+      return;
+    }
+
+    const duplicate = capabilities.some(
+      (item) =>
+        normalizeKey(item.capabilityName) === normalizeKey(capabilityName) &&
+        normalizeKey(item.capabilityName) !== normalizeKey(editingCapabilityName ?? "")
+    );
+
+    if (duplicate) {
+      setError("Capability already exists.");
+      return;
+    }
+
+    const next = editingCapabilityName
+      ? capabilities.map((item) =>
+          normalizeKey(item.capabilityName) === normalizeKey(editingCapabilityName)
+            ? { capabilityName }
+            : item
+        )
+      : [...capabilities, { capabilityName }];
+
+    if (calendarStorage.saveCapabilityMasters) {
+      calendarStorage.saveCapabilityMasters(next);
+    }
+    setCapabilities(next);
+    setCapabilityForm(emptyCapability);
+    setEditingCapabilityName(null);
+    setSuccess(editingCapabilityName ? "Capability updated." : "Capability added.");
+  }
+
+  function startEditCapability(capability: CapabilityMaster) {
+    setCapabilityForm({ capabilityName: capability.capabilityName });
+    setEditingCapabilityName(capability.capabilityName);
+    setStatus(null);
+  }
+
+  function deleteCapability(capabilityName: string) {
+    const next = capabilities.filter(
+      (item) => normalizeKey(item.capabilityName) !== normalizeKey(capabilityName)
+    );
+    if (calendarStorage.saveCapabilityMasters) {
+      calendarStorage.saveCapabilityMasters(next);
+    }
+    setCapabilities(next);
+    if (
+      editingCapabilityName &&
+      normalizeKey(editingCapabilityName) === normalizeKey(capabilityName)
+    ) {
+      setCapabilityForm(emptyCapability);
+      setEditingCapabilityName(null);
+    }
+    setSuccess("Capability deleted.");
   }
 
   function addFacilitator() {
@@ -949,6 +1030,74 @@ export default function MastersCrudClient() {
         </div>
       </section>
 
+      <div className="grid gap-6 md:grid-cols-2">
+        <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900">Capability Master</h2>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleCreateOrUpdateCapability();
+            }}
+            className="mt-4 flex flex-col gap-2 sm:flex-row"
+          >
+            <input
+              type="text"
+              placeholder="Add capability"
+              value={capabilityForm.capabilityName}
+              onChange={(event) =>
+                setCapabilityForm((prev) => ({ ...prev, capabilityName: event.target.value }))
+              }
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+            <button
+              type="submit"
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              {editingCapabilityName ? "Update" : "Add"}
+            </button>
+            {editingCapabilityName && (
+              <button
+                type="button"
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                onClick={() => {
+                  setCapabilityForm(emptyCapability);
+                  setEditingCapabilityName(null);
+                  setStatus(null);
+                }}
+              >
+                Reset
+              </button>
+            )}
+          </form>
+          <div className="mt-4 max-h-72 overflow-auto rounded-md border border-gray-200">
+            {sortedCapabilities.map((capability) => (
+              <div
+                key={capability.capabilityName}
+                className="flex items-center justify-between border-b border-gray-100 px-3 py-2 text-sm last:border-b-0"
+              >
+                <span>{capability.capabilityName}</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => startEditCapability(capability)}
+                    className="rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => deleteCapability(capability.capabilityName)}
+                    className="rounded border border-red-300 px-2 py-1 text-xs font-medium text-red-700"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+            {sortedCapabilities.length === 0 && (
+              <p className="px-3 py-3 text-sm text-gray-500">No capabilities yet.</p>
+            )}
+          </div>
+        </section>
+
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">Trainer / Facilitator Master</h2>
         <div className="mt-4 flex gap-2">
@@ -1080,6 +1229,7 @@ export default function MastersCrudClient() {
           )}
         </div>
       </section>
+      </div>
 
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">Holiday Master</h2>
