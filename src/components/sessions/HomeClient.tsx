@@ -43,6 +43,8 @@ export function HomeClient() {
   const [error, setError]       = useState<string | null>(null);
   const [isImportedData, setIsImportedData] = useState(false);
   const [importMetadata, setImportMetadata] = useState<ImportMetadata | null>(null);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // ── filter state ──
   const [query, setQuery]               = useState("");
@@ -148,6 +150,59 @@ export function HomeClient() {
   const resetFilters = () => {
     setQuery(""); setGeo(""); setAudience(""); setFacilitator("");
     setCapability(""); setDeliveryMode(""); setSortField("date");
+  };
+
+  const createdSessions = allSessions.filter(
+    (session) => session.source?.fileName === "create-session-form"
+  );
+
+  const exportSessionsToExcel = async (sessions: Session[], filePrefix: string) => {
+    if (sessions.length === 0) return;
+
+    try {
+      setIsExportingExcel(true);
+      setExportError(null);
+
+      const XLSX = await import("xlsx");
+      const exportRows = sessions.map((session) => ({
+        "Session ID": session.id,
+        "Program Name": session.programName,
+        "Objectives": session.objectives ?? "",
+        "Facilitator": session.facilitator ?? "",
+        "Date": session.dateISO ?? "",
+        "Schedule": session.scheduleRaw ?? "",
+        "Geo": session.geo ?? "",
+        "Target Audience": session.targetAudience ?? "",
+        "Delivery Mode": session.deliveryMode,
+        "Capability": session.capability ?? "",
+        "Batch Size": session.batchSize ?? "",
+        "Registration Link": session.registrationLink ?? "",
+        "Notes": session.notes ?? "",
+        "Created Source": session.source?.fileName ?? "",
+        "Source Type": session.source?.type ?? "",
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sessions");
+
+      const stamp = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(workbook, `${filePrefix}-${stamp}.xlsx`);
+    } catch (error) {
+      setExportError(
+        error instanceof Error ? error.message : "Failed to export Excel"
+      );
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
+  const downloadFilteredExcel = async () => {
+    await exportSessionsToExcel(filtered, "sessions-filtered");
+  };
+
+  const downloadCreatedSessionsExcel = async () => {
+    await exportSessionsToExcel(createdSessions, "sessions-created-only");
   };
 
   const hasActiveFilters = query || geo || audience || facilitator || capability || deliveryMode;
@@ -282,14 +337,39 @@ export function HomeClient() {
       </section>
 
       <div className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/70 px-4 py-3 text-sm text-slate-500 shadow-[0_10px_26px_rgba(15,23,42,0.05)] backdrop-blur-sm">
-        <span>
-          Showing <strong className="text-slate-900">{filtered.length}</strong> of{" "}
-          <strong className="text-slate-900">{allSessions.length}</strong> sessions
-        </span>
-        {hasActiveFilters && (
-          <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">Filters active</span>
-        )}
+        <div className="flex items-center gap-3">
+          <span>
+            Showing <strong className="text-slate-900">{filtered.length}</strong> of{" "}
+            <strong className="text-slate-900">{allSessions.length}</strong> sessions
+          </span>
+          {hasActiveFilters && (
+            <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">Filters active</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={downloadCreatedSessionsExcel}
+            disabled={createdSessions.length === 0 || isExportingExcel}
+            className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+            title="Exports only sessions created from the Create Sessions form"
+          >
+            {isExportingExcel ? "Exporting..." : `⬇ Download Created Only (${createdSessions.length})`}
+          </button>
+          <button
+            onClick={downloadFilteredExcel}
+            disabled={filtered.length === 0 || isExportingExcel}
+            className="rounded-full bg-[linear-gradient(90deg,#3a2aa1,#2876b5)] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_22px_rgba(40,118,181,0.2)] transition hover:shadow-[0_12px_26px_rgba(40,118,181,0.26)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isExportingExcel ? "Exporting..." : "⬇ Download Filtered Excel"}
+          </button>
+        </div>
       </div>
+
+      {exportError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Failed to export Excel: {exportError}
+        </div>
+      )}
 
       {/* ── Session grid ─────────────────────────────────────────────── */}
       {filtered.length === 0 && allSessions.length === 0 ? (
