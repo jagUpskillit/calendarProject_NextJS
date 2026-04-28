@@ -1,6 +1,6 @@
 # QCE Meeting Talk Track (2 Minutes)
 
-**Date:** 27-Apr-2026  
+**Date:** 28-Apr-2026  
 **Project:** Quarterly Calendar Explorer (QCE)
 
 ## 1) Opening (15–20 sec)
@@ -9,6 +9,8 @@ Good [morning/afternoon]. We have completed a major upgrade of Quarterly Calenda
 ## 2) What is delivered (35–45 sec)
 We now have:
 - End-to-end Excel/CSV import pipeline with normalization and deduplication.
+- Capability heading capture from Be.Cognizant sheets, with capability assignment to imported sessions.
+- Master utilities with CRUD for capability/program/facilitator/geo/holiday and safer bulk master import/export controls.
 - Session discovery with search, filters, sorting, and detail view.
 - AI chat assistant for schedule questions, with unread indicators and improved UX.
 - Dedicated Insights dashboard with KPI-style summaries, trends, breakdowns, filters, and CSV/JSON export.

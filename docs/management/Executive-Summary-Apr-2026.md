@@ -1,6 +1,6 @@
 # Quarterly Calendar Explorer (QCE) — Executive Summary
 
-**Date:** 27-Apr-2026  
+**Date:** 28-Apr-2026  
 **Project:** `calendarProject_NextJS`  
 **Current Stage:** Pilot-ready (feature complete for internal demo)
 
@@ -17,7 +17,13 @@ Quarterly Calendar Explorer is a web application for Cognizant learning operatio
 - Admin import flow for Excel/CSV.
 - Parsing + normalization for mixed source formats.
 - Duplicate merge and stable ID handling to avoid duplicate cards/keys.
+- Capability heading capture from Be.Cognizant XLSX (merged/yellow section headers) and propagation to session-level capability.
 - Imported-data-first mode (sample fallback removed from active user flow).
+
+### Masters and governance utilities
+- Full CRUD for capability, program, facilitator, geo, and holiday masters.
+- 2-column masters UX for compact entities; Program/Holiday kept as full-width sections.
+- Capability master auto-backfill during Be.Cognizant import with case-insensitive de-duplication.
 
 ### Session discovery experience
 - Search + multi-filter + sorting on sessions.
@@ -33,6 +39,8 @@ Quarterly Calendar Explorer is a web application for Cognizant learning operatio
 - Dedicated `/insights` page.
 - KPI cards, summary narrative, breakdowns, trend views.
 - Interactive filtering and export (`CSV`, `JSON`) from filtered insight context.
+- Current filters live: geo, capability, delivery mode, facilitator.
+- Pending in next enhancement pass: date-range filter, ratings/tag filters.
 
 ### UI modernization
 - Cognizant-inspired visual refresh (color system, section framing, cards, header/footer, assistant styling).

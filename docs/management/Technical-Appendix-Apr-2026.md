@@ -1,14 +1,16 @@
 # Quarterly Calendar Explorer (QCE) — Technical Appendix
 
-**Date:** 27-Apr-2026  
+**Date:** 28-Apr-2026  
 **Project:** `calendarProject_NextJS`  
 **Audience:** Management, IT Platform, Security, M365 Admin, Azure Admin
 
 ## 1) Solution snapshot
 QCE is a Next.js web application that currently supports:
 - Excel/CSV import and normalization of training session data.
+- Capability-context extraction from Be.Cognizant heading rows and mapping to imported sessions.
 - Deduplicated session catalog with search/filter/sort.
 - AI assistant and insights dashboard with exportable reports.
+- Master administration utilities (capability/program/facilitator/geo/holiday CRUD + bulk master utilities).
 
 Current pilot mode stores imported data in browser local storage. Enterprise mode requires Microsoft identity + SharePoint integration + managed hosting + governed AI.
 
@@ -19,6 +21,7 @@ Current pilot mode stores imported data in browser local storage. Enterprise mod
 - **Data source:** Manual file upload (Excel/CSV)
 - **Storage:** Browser local storage
 - **AI path:** API route + optional OpenAI key from environment
+- **Insights filter coverage:** geo, capability, delivery mode, facilitator (date range/tags/ratings planned next)
 
 ### Target (enterprise)
 - **Auth:** Microsoft Entra ID SSO
