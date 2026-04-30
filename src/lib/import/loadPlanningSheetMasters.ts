@@ -18,6 +18,17 @@ export async function loadPlanningSheetMasters(
 
   // Save masters to storage
   calendarStorage.saveProgramMasters(result.programMasters);
+  const existingCapabilities = calendarStorage.loadCapabilityMasters();
+  const capabilityMasters = Array.from(
+    new Map(
+      [...existingCapabilities, ...result.programMasters
+        .map((program) => program.capabilityName?.trim())
+        .filter((capabilityName): capabilityName is string => Boolean(capabilityName))
+        .map((capabilityName) => ({ capabilityName }))]
+        .map((item) => [item.capabilityName.toLowerCase(), item])
+    ).values()
+  );
+  calendarStorage.saveCapabilityMasters(capabilityMasters);
   calendarStorage.saveFacilitatorMasters(result.facilitatorMasters);
   calendarStorage.saveGeoMasters(result.geoMasters);
   calendarStorage.saveHolidayMasters(result.holidayMasters);

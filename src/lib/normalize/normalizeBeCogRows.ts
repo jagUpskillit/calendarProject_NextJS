@@ -253,6 +253,7 @@ export function normalizeBeCogRows(
     if (!programMap.has(key)) {
       programMap.set(key, {
         programName,
+        capabilityName: capability,
         objectives,
         formatDuration,
         defaultFacilitator: facilitator,

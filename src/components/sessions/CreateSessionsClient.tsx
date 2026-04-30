@@ -116,6 +116,14 @@ export default function CreateSessionsClient() {
 
   const normalizeText = (value: string): string => value.trim().toLowerCase();
 
+  const findProgramByName = useCallback(
+    (programName: string) =>
+      programs.find(
+        (program) => normalizeText(program.programName) === normalizeText(programName)
+      ),
+    [programs]
+  );
+
   const suggestedFacilitators = useMemo(() => {
     const programKey = normalizeText(form.programName || "");
     if (!programKey) return [];
@@ -170,6 +178,17 @@ export default function CreateSessionsClient() {
 
       // Save to storage
       calendarStorage.saveProgramMasters(result.programMasters);
+      const existingCapabilities = calendarStorage.loadCapabilityMasters();
+      const parsedCapabilities = Array.from(
+        new Map(
+          [...existingCapabilities, ...result.programMasters
+            .map((program) => program.capabilityName?.trim())
+            .filter((capabilityName): capabilityName is string => Boolean(capabilityName))
+            .map((capabilityName) => ({ capabilityName }))]
+            .map((item) => [item.capabilityName.toLowerCase(), item])
+        ).values()
+      );
+      calendarStorage.saveCapabilityMasters(parsedCapabilities);
       calendarStorage.saveFacilitatorMasters(result.facilitatorMasters);
       calendarStorage.saveGeoMasters(result.geoMasters);
       calendarStorage.saveHolidayMasters(result.holidayMasters);
@@ -189,6 +208,7 @@ export default function CreateSessionsClient() {
 
       // Update UI state
       setPrograms(result.programMasters);
+      setCapabilities(parsedCapabilities);
       setFacilitators(result.facilitatorMasters);
       setHolidays(result.holidayMasters);
       setMetadata(newMeta);
@@ -208,14 +228,22 @@ export default function CreateSessionsClient() {
 
   // Filter programmes based on search
   const filteredPrograms = useMemo(() => {
-    if (!programSearch.trim()) return programs.slice(0, 10); // Show first 10 if no filter
+    const selectedCapabilityKey = normalizeText(form.capability || "");
+    const capabilityScopedPrograms = selectedCapabilityKey
+      ? programs.filter(
+          (program) =>
+            normalizeText(program.capabilityName ?? "") === selectedCapabilityKey
+        )
+      : programs;
+
+    if (!programSearch.trim()) return capabilityScopedPrograms.slice(0, 10); // Show first 10 if no filter
     const lower = programSearch.toLowerCase();
-    return programs.filter(
+    return capabilityScopedPrograms.filter(
       (p) =>
         p.programName.toLowerCase().includes(lower) ||
         (p.objectives && p.objectives.toLowerCase().includes(lower))
     );
-  }, [programs, programSearch]);
+  }, [programs, programSearch, form.capability]);
 
   // Filter facilitators for dropdown
   const filteredFacilitators = useMemo(() => {
@@ -281,9 +309,34 @@ export default function CreateSessionsClient() {
   );
 
   const handleProgramSelect = (programName: string) => {
-    setForm((prev) => ({ ...prev, programName }));
+    const selectedProgram = findProgramByName(programName);
+    setForm((prev) => ({
+      ...prev,
+      programName,
+      capability:
+        selectedProgram?.capabilityName?.trim() || prev.capability,
+    }));
     setProgramSearch("");
     setShowProgramDropdown(false);
+  };
+
+  const handleCapabilityChange = (nextCapability: string) => {
+    setForm((prev) => {
+      const selectedProgram = findProgramByName(prev.programName);
+      const selectedProgramCapability = selectedProgram?.capabilityName?.trim() || "";
+      const selectedCapabilityKey = normalizeText(nextCapability);
+      const programMatchesCapability =
+        !selectedCapabilityKey ||
+        (selectedProgramCapability &&
+          normalizeText(selectedProgramCapability) === selectedCapabilityKey);
+
+      return {
+        ...prev,
+        capability: nextCapability,
+        programName: programMatchesCapability ? prev.programName : "",
+      };
+    });
+    setProgramSearch("");
   };
 
   const handleFacilitatorSelect = (facilitatorName: string) => {
@@ -567,6 +620,39 @@ export default function CreateSessionsClient() {
             </h2>
 
             <div className="space-y-6">
+              {/* Capability Dropdown */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Capability <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={form.capability}
+                  onChange={(e) => handleCapabilityChange(e.target.value)}
+                  className={`w-full px-4 py-3 rounded-xl border-2 outline-none transition ${
+                    errors.capability
+                      ? "border-red-500"
+                      : "border-gray-200 focus:border-indigo-500"
+                  }`}
+                >
+                  <option value="">Select capability</option>
+                  {capabilities.map((cap) => (
+                    <option key={cap.capabilityName} value={cap.capabilityName}>
+                      {cap.capabilityName}
+                    </option>
+                  ))}
+                </select>
+                {errors.capability && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.capability}
+                  </p>
+                )}
+                {form.capability && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Programme list is scoped to the selected capability.
+                  </p>
+                )}
+              </div>
+
               {/* Programme Search */}
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -633,34 +719,6 @@ export default function CreateSessionsClient() {
                 {errors.programName && (
                   <p className="mt-1 text-sm text-red-600">
                     {errors.programName}
-                  </p>
-                )}
-              </div>
-
-              {/* Capability Dropdown */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                  Capability <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={form.capability}
-                  onChange={(e) => setForm((prev) => ({ ...prev, capability: e.target.value }))}
-                  className={`w-full px-4 py-3 rounded-xl border-2 outline-none transition ${
-                    errors.capability
-                      ? "border-red-500"
-                      : "border-gray-200 focus:border-indigo-500"
-                  }`}
-                >
-                  <option value="">Select capability</option>
-                  {capabilities.map((cap) => (
-                    <option key={cap.capabilityName} value={cap.capabilityName}>
-                      {cap.capabilityName}
-                    </option>
-                  ))}
-                </select>
-                {errors.capability && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.capability}
                   </p>
                 )}
               </div>

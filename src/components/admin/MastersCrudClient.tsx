@@ -16,6 +16,7 @@ export interface CapabilityMaster {
 
 const emptyProgram: ProgramMaster = {
   programName: "",
+  capabilityName: "",
   objectives: "",
   formatDuration: "",
   defaultFacilitator: "",
@@ -154,6 +155,7 @@ export default function MastersCrudClient() {
     const key = normalizeKey(name);
     const payload: ProgramMaster = {
       programName: name,
+      capabilityName: programForm.capabilityName?.trim() || undefined,
       objectives: programForm.objectives?.trim() || undefined,
       formatDuration: programForm.formatDuration?.trim() || undefined,
       defaultFacilitator: programForm.defaultFacilitator?.trim() || undefined,
@@ -189,6 +191,7 @@ export default function MastersCrudClient() {
   function startEditProgram(program: ProgramMaster) {
     setProgramForm({
       programName: program.programName,
+      capabilityName: program.capabilityName ?? "",
       objectives: program.objectives ?? "",
       formatDuration: program.formatDuration ?? "",
       defaultFacilitator: program.defaultFacilitator ?? "",
@@ -487,6 +490,7 @@ export default function MastersCrudClient() {
       if (!programName) continue;
       byName.set(normalizeKey(programName), {
         programName,
+        capabilityName: item.capabilityName?.trim() || undefined,
         objectives: item.objectives?.trim() || undefined,
         formatDuration: item.formatDuration?.trim() || undefined,
         defaultFacilitator: item.defaultFacilitator?.trim() || undefined,
@@ -542,6 +546,7 @@ export default function MastersCrudClient() {
       const programsSheet = XLSX.utils.json_to_sheet(
         sortedPrograms.map((item) => ({
           "Program Name": item.programName,
+          "Capability Name": item.capabilityName ?? "",
           Objectives: item.objectives ?? "",
           "Format Duration": item.formatDuration ?? "",
           "Default Facilitator": item.defaultFacilitator ?? "",
@@ -609,9 +614,10 @@ export default function MastersCrudClient() {
 
     downloadCsv(
       `masters-programs-${stamp}.csv`,
-      ["Program Name", "Objectives", "Format Duration", "Default Facilitator"],
+      ["Program Name", "Capability Name", "Objectives", "Format Duration", "Default Facilitator"],
       sortedPrograms.map((item) => [
         item.programName,
+        item.capabilityName ?? "",
         item.objectives ?? "",
         item.formatDuration ?? "",
         item.defaultFacilitator ?? "",
@@ -674,6 +680,10 @@ export default function MastersCrudClient() {
         const rows = await parseWorksheetRows(workbook.Sheets[sheetName]);
         const mapped = rows.map((row) => ({
           programName: String(row["Program Name"] ?? "").trim(),
+          capabilityName:
+            String(
+              row["Capability Name"] ?? row["Capability"] ?? row["Competency"] ?? ""
+            ).trim() || undefined,
           objectives: String(row["Objectives"] ?? "").trim() || undefined,
           formatDuration: String(row["Format Duration"] ?? "").trim() || undefined,
           defaultFacilitator: String(row["Default Facilitator"] ?? "").trim() || undefined,
@@ -948,6 +958,20 @@ export default function MastersCrudClient() {
             placeholder="Program name"
             className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
+          <select
+            value={programForm.capabilityName ?? ""}
+            onChange={(e) =>
+              setProgramForm((prev) => ({ ...prev, capabilityName: e.target.value }))
+            }
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          >
+            <option value="">Select capability (optional)</option>
+            {sortedCapabilities.map((capability) => (
+              <option key={capability.capabilityName} value={capability.capabilityName}>
+                {capability.capabilityName}
+              </option>
+            ))}
+          </select>
           <input
             type="text"
             value={programForm.defaultFacilitator ?? ""}
@@ -972,6 +996,9 @@ export default function MastersCrudClient() {
             className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
         </div>
+        <p className="mt-2 text-xs text-gray-500">
+          Tip: If a program has no capability mapping, Create Sessions will not auto-select capability for that program.
+        </p>
         <div className="mt-3 flex gap-2">
           <button
             onClick={handleCreateOrUpdateProgram}
@@ -996,6 +1023,7 @@ export default function MastersCrudClient() {
             <thead>
               <tr className="border-b bg-gray-50 text-left text-gray-700">
                 <th className="px-3 py-2">Program</th>
+                <th className="px-3 py-2">Capability</th>
                 <th className="px-3 py-2">Format/Duration</th>
                 <th className="px-3 py-2">Default Facilitator</th>
                 <th className="px-3 py-2">Actions</th>
@@ -1005,6 +1033,7 @@ export default function MastersCrudClient() {
               {sortedPrograms.map((program) => (
                 <tr key={program.programName} className="border-b border-gray-100">
                   <td className="px-3 py-2 font-medium text-gray-900">{program.programName}</td>
+                  <td className="px-3 py-2 text-gray-700">{program.capabilityName ?? "-"}</td>
                   <td className="px-3 py-2 text-gray-700">{program.formatDuration ?? "-"}</td>
                   <td className="px-3 py-2 text-gray-700">{program.defaultFacilitator ?? "-"}</td>
                   <td className="px-3 py-2">

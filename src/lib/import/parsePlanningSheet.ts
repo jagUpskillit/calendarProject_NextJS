@@ -132,6 +132,7 @@ function parseCapabilityMapping(sheet: any): {
 
     programs.push({
       programName,
+      capabilityName: competency ? String(competency).trim() : undefined,
       objectives: competency || undefined,
       formatDuration: deliveryMode
         ? `${deliveryMode} | ${duration || "unknown duration"}`

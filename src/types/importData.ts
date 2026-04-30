@@ -55,6 +55,7 @@ export interface CsvParseResult {
 
 export interface ProgramMaster {
   programName: string;
+  capabilityName?: string;
   objectives?: string;
   formatDuration?: string;
   defaultFacilitator?: string;
