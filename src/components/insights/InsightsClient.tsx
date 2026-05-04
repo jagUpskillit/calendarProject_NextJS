@@ -110,8 +110,8 @@ function BreakdownCard({ title, rows }: { title: string; rows: BreakdownRow[] })
 function HorizontalChart({ title, rows, tone }: { title: string; rows: BreakdownRow[]; tone: "indigo" | "emerald" | "amber" | "sky" }) {
   const toneClassNames = {
     indigo: "bg-indigo-500",
-    emerald: "bg-emerald-500",
-    amber: "bg-amber-500",
+    emerald: "bg-emerald-600",
+    amber: "bg-amber-600",
     sky: "bg-sky-500",
   };
 
@@ -397,7 +397,7 @@ export function InsightsClient() {
               {activeFilterCount > 0 ? ` across ${activeFilterCount} active filter${activeFilterCount === 1 ? "" : "s"}.` : "."}
             </p>
           </div>
-          <div className="relative rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white/90 backdrop-blur-sm">
+          <div className="relative rounded-2xl border border-white/35 bg-white/20 px-4 py-3 text-sm text-white shadow-[0_10px_24px_rgba(2,6,23,0.18)] backdrop-blur-sm">
             <p><span className="font-medium text-white">Imported:</span> {importMetadata ? new Date(importMetadata.importedAt).toLocaleString() : "Unknown"}</p>
             <p><span className="font-medium text-white">Files:</span> {importMetadata?.fileNames.join(", ") || "N/A"}</p>
           </div>
@@ -405,7 +405,7 @@ export function InsightsClient() {
 
         <div className="relative mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {report.metrics.map((metric) => (
-            <div key={metric.label} className="rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm">
+            <div key={metric.label} className="rounded-2xl border border-white/30 bg-white/16 p-4 shadow-[0_10px_24px_rgba(2,6,23,0.16)] backdrop-blur-sm">
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/70">{metric.label}</p>
               <p className="mt-2 text-xl font-semibold text-white">{metric.value}</p>
             </div>
@@ -413,7 +413,7 @@ export function InsightsClient() {
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-white/70 bg-white/82 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+      <section className="rounded-[28px] border border-indigo-100 bg-indigo-50/55 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.07)] backdrop-blur-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Filter the dashboard</h2>
@@ -424,7 +424,7 @@ export function InsightsClient() {
               type="button"
               onClick={downloadFilteredCsv}
               disabled={filteredSessions.length === 0}
-              className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              className="rounded-full border border-indigo-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-indigo-50 disabled:opacity-60"
             >
               Download CSV
             </button>
@@ -440,7 +440,7 @@ export function InsightsClient() {
               type="button"
               onClick={resetFilters}
               disabled={activeFilterCount === 0}
-              className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              className="rounded-full border border-indigo-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-indigo-50 disabled:opacity-60"
             >
               Reset Filters
             </button>
@@ -453,7 +453,7 @@ export function InsightsClient() {
             <select
               value={filters.geo}
               onChange={(event) => updateFilter("geo", event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-[0_8px_20px_rgba(15,23,42,0.05)] outline-none focus:border-[#2876b5] focus:ring-2 focus:ring-[#2876b5]/15"
+              className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2.5 text-sm shadow-[0_8px_20px_rgba(15,23,42,0.04)] outline-none focus:border-[#2876b5] focus:ring-2 focus:ring-[#2876b5]/15"
             >
               <option value="all">All geographies</option>
               {filterOptions.geo.map((option) => (
@@ -467,7 +467,7 @@ export function InsightsClient() {
             <select
               value={filters.capability}
               onChange={(event) => updateFilter("capability", event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-[0_8px_20px_rgba(15,23,42,0.05)] outline-none focus:border-[#2876b5] focus:ring-2 focus:ring-[#2876b5]/15"
+              className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2.5 text-sm shadow-[0_8px_20px_rgba(15,23,42,0.04)] outline-none focus:border-[#2876b5] focus:ring-2 focus:ring-[#2876b5]/15"
             >
               <option value="all">All capabilities</option>
               {filterOptions.capability.map((option) => (
@@ -481,7 +481,7 @@ export function InsightsClient() {
             <select
               value={filters.deliveryMode}
               onChange={(event) => updateFilter("deliveryMode", event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-[0_8px_20px_rgba(15,23,42,0.05)] outline-none focus:border-[#2876b5] focus:ring-2 focus:ring-[#2876b5]/15"
+              className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2.5 text-sm shadow-[0_8px_20px_rgba(15,23,42,0.04)] outline-none focus:border-[#2876b5] focus:ring-2 focus:ring-[#2876b5]/15"
             >
               <option value="all">All delivery modes</option>
               {filterOptions.deliveryMode.map((option) => (
@@ -495,7 +495,7 @@ export function InsightsClient() {
             <select
               value={filters.facilitator}
               onChange={(event) => updateFilter("facilitator", event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-[0_8px_20px_rgba(15,23,42,0.05)] outline-none focus:border-[#2876b5] focus:ring-2 focus:ring-[#2876b5]/15"
+              className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2.5 text-sm shadow-[0_8px_20px_rgba(15,23,42,0.04)] outline-none focus:border-[#2876b5] focus:ring-2 focus:ring-[#2876b5]/15"
             >
               <option value="all">All facilitators</option>
               {filterOptions.facilitator.map((option) => (
@@ -522,9 +522,9 @@ export function InsightsClient() {
       ) : (
         <>
 
-      <section className="rounded-[28px] border border-indigo-100 bg-[linear-gradient(180deg,rgba(238,242,255,0.9),rgba(255,255,255,0.86))] p-6 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
-        <h2 className="text-xl font-semibold text-indigo-950">{report.headline}</h2>
-        <p className="mt-2 text-sm text-indigo-900">{report.summary}</p>
+      <section className="rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,1),rgba(255,255,255,0.98))] p-6 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+        <h2 className="text-xl font-semibold text-slate-900">{report.headline}</h2>
+        <p className="mt-2 text-sm text-slate-700">{report.summary}</p>
         <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-800">
           {report.bullets.map((bullet) => (
             <li key={bullet}>{bullet}</li>
@@ -534,7 +534,7 @@ export function InsightsClient() {
 
       <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
         <MonthlyTrendChart rows={monthBreakdown.filter((row) => row.label !== "Undated")} />
-        <section className="rounded-[24px] border border-white/70 bg-white/88 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+        <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
           <h2 className="text-lg font-semibold text-slate-900">Delivery Mix</h2>
           <p className="mt-1 text-sm text-slate-500">How the imported calendar is split across delivery types.</p>
           <div className="mt-5 space-y-4">
@@ -565,11 +565,11 @@ export function InsightsClient() {
         <BreakdownCard title="Sessions by Delivery Mode" rows={deliveryBreakdown} />
       </div>
 
-      <section className="rounded-[24px] border border-white/70 bg-white/88 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+      <section className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur-sm">
         <h2 className="text-lg font-semibold text-slate-900">Monthly Delivery Profile</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {monthBreakdown.map((row) => (
-            <div key={row.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_22px_rgba(15,23,42,0.04)]">
+            <div key={row.label} className="rounded-2xl border border-slate-300 bg-white p-4 shadow-[0_10px_22px_rgba(15,23,42,0.04)]">
               <p className="text-sm font-medium text-slate-900">{formatMonthLabel(row.label)}</p>
               <p className="mt-1 text-xs text-slate-500">{row.count} sessions</p>
             </div>
