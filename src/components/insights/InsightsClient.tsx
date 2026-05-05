@@ -440,9 +440,19 @@ export function InsightsClient() {
               {activeFilterCount > 0 ? ` across ${activeFilterCount} active filter${activeFilterCount === 1 ? "" : "s"}.` : "."}
             </p>
           </div>
-          <div className="relative rounded-2xl border border-white/35 bg-white/20 px-4 py-3 text-sm text-white shadow-[0_10px_24px_rgba(2,6,23,0.18)] backdrop-blur-sm">
-            <p><span className="font-medium text-white">Imported:</span> {importMetadata ? new Date(importMetadata.importedAt).toLocaleString() : "Unknown"}</p>
-            <p><span className="font-medium text-white">Files:</span> {importMetadata?.fileNames.join(", ") || "N/A"}</p>
+          <div className="flex w-full max-w-xs flex-col gap-3">
+            {insightsCycleOptions.length > 0 && (
+              <PlanningCycleSelector
+                cycles={insightsCycleOptions}
+                value={selectedPlanningCycleId}
+                onChange={handlePlanningCycleChange}
+                label="Quarter"
+              />
+            )}
+            <div className="relative rounded-2xl border border-white/35 bg-white/20 px-4 py-3 text-sm text-white shadow-[0_10px_24px_rgba(2,6,23,0.18)] backdrop-blur-sm">
+              <p><span className="font-medium text-white">Imported:</span> {importMetadata ? new Date(importMetadata.importedAt).toLocaleString() : "Unknown"}</p>
+              <p><span className="font-medium text-white">Files:</span> {importMetadata?.fileNames.join(", ") || "N/A"}</p>
+            </div>
           </div>
         </div>
 
@@ -455,19 +465,6 @@ export function InsightsClient() {
           ))}
         </div>
       </section>
-
-      {insightsCycleOptions.length > 0 && (
-        <section className="rounded-[28px] border border-indigo-100 bg-indigo-50/55 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.07)] backdrop-blur-sm">
-          <div className="max-w-xs">
-            <PlanningCycleSelector
-              cycles={insightsCycleOptions}
-              value={selectedPlanningCycleId}
-              onChange={handlePlanningCycleChange}
-              label="Planning Cycle"
-            />
-          </div>
-        </section>
-      )}
 
       <section className="rounded-[28px] border border-indigo-100 bg-indigo-50/55 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.07)] backdrop-blur-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">

@@ -313,23 +313,29 @@ export default function AdminImportPage() {
   return (
     <div className="space-y-8">
       <section>
-        <h1 className="text-2xl font-bold text-gray-900">Admin Import</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Upload Be.Cognizant CSV/XLSX and optional Planning workbook to refresh local imported data.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <h1 className="text-2xl font-bold text-gray-900">Admin Import</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Upload Be.Cognizant CSV/XLSX and optional Planning workbook to refresh local imported data.
+            </p>
+          </div>
+          {activePlanningCycles.length > 0 && (
+            <div className="w-full max-w-xs">
+              <PlanningCycleSelector
+                cycles={activePlanningCycles}
+                value={selectedPlanningCycleId}
+                onChange={setSelectedPlanningCycleId}
+                label="Quarter"
+              />
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
         {activePlanningCycles.length > 0 && (
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1">
-              <PlanningCycleSelector
-                cycles={activePlanningCycles}
-                value={selectedPlanningCycleId}
-                onChange={setSelectedPlanningCycleId}
-                label="Import Quarter"
-              />
-            </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-600">
                 Quarter Assignment Mode
@@ -343,7 +349,7 @@ export default function AdminImportPage() {
                 <option value="auto">Auto-detect by session date (fallback to selected quarter)</option>
               </select>
             </div>
-            <div className="flex flex-col gap-1 md:col-span-2">
+            <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-600">
                 Import Safeguard (Target Cycles)
               </label>

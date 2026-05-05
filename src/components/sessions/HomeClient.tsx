@@ -265,22 +265,22 @@ export function HomeClient() {
               Browse the quarterly learning portfolio with a cleaner, portal-inspired experience for discovery, filtering, and AI-assisted insights.
             </p>
           </div>
-          <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white/90 backdrop-blur-sm">
-            <p className="text-xs uppercase tracking-[0.22em] text-white/65">Catalog snapshot</p>
-            <p className="mt-1 text-2xl font-semibold">{cycleScopedSessions.length}</p>
-            <p className="text-xs text-white/75">sessions in selected cycle</p>
+          <div className="flex w-full max-w-xs flex-col gap-3">
+            <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white/90 backdrop-blur-sm">
+              <p className="text-xs uppercase tracking-[0.22em] text-white/65">Catalog snapshot</p>
+              <p className="mt-1 text-2xl font-semibold">{cycleScopedSessions.length}</p>
+              <p className="text-xs text-white/75">sessions in selected cycle</p>
+            </div>
+            {activePlanningCycles.length > 0 && (
+              <PlanningCycleSelector
+                cycles={activePlanningCycles}
+                value={selectedPlanningCycleId}
+                onChange={handlePlanningCycleChange}
+                label="Quarter"
+              />
+            )}
           </div>
         </div>
-        {activePlanningCycles.length > 0 && (
-          <div className="relative mt-5 max-w-xs">
-            <PlanningCycleSelector
-              cycles={activePlanningCycles}
-              value={selectedPlanningCycleId}
-              onChange={handlePlanningCycleChange}
-              label="Planning Cycle"
-            />
-          </div>
-        )}
         <div className="relative mt-5 rounded-2xl border border-white/16 bg-white/10 px-4 py-3 text-xs text-white/90 backdrop-blur-sm">
           {isImportedData && importMetadata ? (
             <>

@@ -15,7 +15,7 @@ export function PlanningCycleSelector({
   value,
   onChange,
   className,
-  label = "Planning Cycle",
+  label = "Quarter",
 }: PlanningCycleSelectorProps) {
   return (
     <label className={className ?? "block"}>

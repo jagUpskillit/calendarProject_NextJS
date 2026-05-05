@@ -1055,23 +1055,27 @@ export default function MastersCrudClient() {
   return (
     <div className="space-y-8">
       <section>
-        <h1 className="text-2xl font-bold text-gray-900">Master Utilities</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Manage Program, Trainer/Facilitator, Geo, and Holiday masters with full CRUD.
-        </p>
-        <p className="mt-1 text-xs text-gray-500">
-          Import supports `.xlsx` (sheet names: Programs, Facilitators, Geos, Holidays) or one master `.csv` using exported headers.
-        </p>
-        {activePlanningCycles.length > 0 && (
-          <div className="mt-3 max-w-xs">
-            <PlanningCycleSelector
-              cycles={activePlanningCycles}
-              value={selectedPlanningCycleId}
-              onChange={handlePlanningCycleChange}
-              label="Planning Cycle"
-            />
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <h1 className="text-2xl font-bold text-gray-900">Master Utilities</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Manage Program, Trainer/Facilitator, Geo, and Holiday masters with full CRUD.
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              Import supports `.xlsx` (sheet names: Programs, Facilitators, Geos, Holidays) or one master `.csv` using exported headers.
+            </p>
           </div>
-        )}
+          {activePlanningCycles.length > 0 && (
+            <div className="w-full max-w-xs">
+              <PlanningCycleSelector
+                cycles={activePlanningCycles}
+                value={selectedPlanningCycleId}
+                onChange={handlePlanningCycleChange}
+                label="Quarter"
+              />
+            </div>
+          )}
+        </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <label className="text-xs font-semibold text-gray-700" htmlFor="masters-import-mode">
             Import Mode

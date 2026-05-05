@@ -569,17 +569,31 @@ export default function CreateSessionsClient() {
       {/* Header */}
       <div className="border-b bg-white/90 backdrop-blur-sm shadow-sm">
         <div className="mx-auto max-w-4xl px-6 py-8">
-          <h1 className="text-3xl font-bold text-gray-900">Create Sessions</h1>
-          <p className="mt-2 text-gray-600">
-            Create training sessions from masters instead of editing Excel. Your data stays in sync
-            with the import pipeline.
-          </p>
-          <p className="mt-2 text-sm text-indigo-700">
-            Need to add or update programs/masters?{" "}
-            <Link href="/admin/masters" className="font-semibold underline hover:text-indigo-900">
-              Open Master Utilities
-            </Link>
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <h1 className="text-3xl font-bold text-gray-900">Create Sessions</h1>
+              <p className="mt-2 text-gray-600">
+                Create training sessions from masters instead of editing Excel. Your data stays in sync
+                with the import pipeline.
+              </p>
+              <p className="mt-2 text-sm text-indigo-700">
+                Need to add or update programs/masters?{" "}
+                <Link href="/admin/masters" className="font-semibold underline hover:text-indigo-900">
+                  Open Master Utilities
+                </Link>
+              </p>
+            </div>
+            {activePlanningCycles.length > 0 && (
+              <div className="w-full max-w-xs">
+                <PlanningCycleSelector
+                  cycles={activePlanningCycles}
+                  value={selectedPlanningCycleId}
+                  onChange={handlePlanningCycleChange}
+                  label="Quarter"
+                />
+              </div>
+            )}
+          </div>
 
           {/* Master Loader */}
           {(!programs || programs.length === 0) && (
@@ -616,16 +630,6 @@ export default function CreateSessionsClient() {
             </div>
           )}
 
-          {activePlanningCycles.length > 0 && (
-            <div className="mt-4 max-w-xs">
-              <PlanningCycleSelector
-                cycles={activePlanningCycles}
-                value={selectedPlanningCycleId}
-                onChange={handlePlanningCycleChange}
-                label="Planning Cycle"
-              />
-            </div>
-          )}
         </div>
       </div>
 
