@@ -1,12 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { CalendarDataBundle, HolidayMaster } from "@/types";
+import type { CalendarDataBundle, HolidayMaster, PlanningCycle } from "@/types";
 import { calendarStorage } from "@/lib/storage";
 import { parseBeCogCsvFile } from "@/lib/import/parseBeCogCsv";
 import { parseBeCogXlsxFile } from "@/lib/import/parseBeCogXlsx";
 import { parsePlanningXlsxFile } from "@/lib/import/parsePlanningXlsx";
 import { normalizeBeCogRows } from "@/lib/normalize";
+import { PlanningCycleSelector } from "@/components/ui/PlanningCycleSelector";
+
+type ImportCycleMode = "selected" | "auto";
+type ImportCycleMergeMode = "replace" | "append";
 
 export default function AdminImportPage() {
   const [beCogCsvFile, setBeCogCsvFile] = useState<File | null>(null);
@@ -17,8 +21,33 @@ export default function AdminImportPage() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [bundle, setBundle] = useState<CalendarDataBundle | null>(null);
   const [clearMessage, setClearMessage] = useState<string>("");
+  const [planningCycles] = useState<PlanningCycle[]>(() => calendarStorage.loadPlanningCycles());
+  const [selectedPlanningCycleId, setSelectedPlanningCycleId] = useState<string>(() =>
+    calendarStorage.getActivePlanningCycleId()
+  );
+  const [importCycleMode, setImportCycleMode] = useState<ImportCycleMode>("selected");
+  const [importCycleMergeMode, setImportCycleMergeMode] = useState<ImportCycleMergeMode>("replace");
 
   const summary = useMemo(() => bundle?.metadata ?? null, [bundle]);
+  const activePlanningCycles = useMemo(
+    () => planningCycles.filter((cycle) => !cycle.isArchived),
+    [planningCycles]
+  );
+
+  function detectPlanningCycleIdByDate(dateISO: string | undefined, cycles: PlanningCycle[]): string | null {
+    if (!dateISO) return null;
+    const date = dateISO.slice(0, 10);
+    if (!date || date.length !== 10) return null;
+
+    const matchingCycle = cycles.find((cycle) => {
+      const start = cycle.startDate?.slice(0, 10);
+      const end = cycle.endDate?.slice(0, 10);
+      if (!start || !end) return false;
+      return date >= start && date <= end;
+    });
+
+    return matchingCycle?.id ?? null;
+  }
 
   async function processImport() {
     setProcessing(true);
@@ -54,19 +83,168 @@ export default function AdminImportPage() {
       const normalized = normalizeBeCogRows(rawRows, { holidays });
       const fileNames = [beCogCsvFile?.name, beCogXlsxFile?.name, planningXlsxFile?.name].filter(Boolean) as string[];
 
+      const fallbackCycleId = selectedPlanningCycleId || calendarStorage.getActivePlanningCycleId();
+      const selectableCycles = activePlanningCycles.length > 0 ? activePlanningCycles : planningCycles;
+
+      const mappedSessions = normalized.sessions.map((session) => {
+        const autoDetected = detectPlanningCycleIdByDate(session.dateISO, selectableCycles);
+        const planningCycleId =
+          importCycleMode === "auto"
+            ? autoDetected ?? fallbackCycleId
+            : fallbackCycleId;
+
+        return {
+          ...session,
+          id: `${session.id}__${planningCycleId}`,
+          planningCycleId,
+        };
+      });
+
+      const cycleIdsByProgram = new Map<string, Set<string>>();
+      for (const session of mappedSessions) {
+        const programKey = session.programName.trim().toLowerCase();
+        if (!programKey) continue;
+        const set = cycleIdsByProgram.get(programKey) ?? new Set<string>();
+        set.add(session.planningCycleId ?? fallbackCycleId);
+        cycleIdsByProgram.set(programKey, set);
+      }
+
+      const mappedProgramMasters = normalized.masters.programs.map((program) => {
+        const key = program.programName.trim().toLowerCase();
+        const cycleIds = Array.from(cycleIdsByProgram.get(key) ?? new Set<string>([fallbackCycleId]));
+        return {
+          ...program,
+          planningCycleIds: cycleIds,
+        };
+      });
+
+      const existingSessions = calendarStorage.loadSessions();
+      const importedCycleIds = new Set(
+        mappedSessions
+          .map((session) => session.planningCycleId)
+          .filter((value): value is string => Boolean(value))
+      );
+
+      const mergedSessions =
+        importCycleMergeMode === "replace"
+          ? [
+              ...existingSessions.filter(
+                (session) => !importedCycleIds.has(session.planningCycleId ?? fallbackCycleId)
+              ),
+              ...mappedSessions,
+            ]
+          : (() => {
+              const sessionMap = new Map<string, (typeof existingSessions)[number]>();
+              for (const session of existingSessions) {
+                sessionMap.set(session.id, session);
+              }
+              for (const session of mappedSessions) {
+                sessionMap.set(session.id, session);
+              }
+              return Array.from(sessionMap.values());
+            })();
+
+      const existingPrograms = calendarStorage.loadProgramMasters();
+      const programMap = new Map<string, (typeof existingPrograms)[number]>();
+      for (const program of existingPrograms) {
+        programMap.set(program.programName.trim().toLowerCase(), {
+          ...program,
+          planningCycleIds: Array.from(new Set((program.planningCycleIds ?? []).filter(Boolean))),
+        });
+      }
+      for (const program of mappedProgramMasters) {
+        const key = program.programName.trim().toLowerCase();
+        const existing = programMap.get(key);
+        if (!existing) {
+          programMap.set(key, {
+            ...program,
+            planningCycleIds: Array.from(new Set((program.planningCycleIds ?? [fallbackCycleId]).filter(Boolean))),
+          });
+          continue;
+        }
+
+        const mergedCycleIds = Array.from(
+          new Set([...(existing.planningCycleIds ?? []), ...(program.planningCycleIds ?? [])].filter(Boolean))
+        );
+
+        programMap.set(key, {
+          ...existing,
+          ...program,
+          capabilityName: program.capabilityName ?? existing.capabilityName,
+          objectives: program.objectives ?? existing.objectives,
+          formatDuration: program.formatDuration ?? existing.formatDuration,
+          defaultFacilitator: program.defaultFacilitator ?? existing.defaultFacilitator,
+          planningCycleIds: mergedCycleIds.length > 0 ? mergedCycleIds : [fallbackCycleId],
+        });
+      }
+      const mergedProgramMasters = Array.from(programMap.values()).sort((a, b) =>
+        a.programName.localeCompare(b.programName)
+      );
+
+      const existingFacilitators = calendarStorage.loadFacilitatorMasters();
+      const mergedFacilitatorMasters = Array.from(
+        new Map(
+          [...existingFacilitators, ...normalized.masters.facilitators]
+            .map((item) => item.name.trim())
+            .filter(Boolean)
+            .map((name) => [name.toLowerCase(), { name }])
+        ).values()
+      ).sort((a, b) => a.name.localeCompare(b.name));
+
+      const existingGeos = calendarStorage.loadGeoMasters();
+      const mergedGeoMasters = Array.from(
+        new Map(
+          [...existingGeos, ...normalized.masters.geos]
+            .map((item) => item.geoName.trim())
+            .filter(Boolean)
+            .map((geoName) => [geoName.toLowerCase(), { geoName }])
+        ).values()
+      ).sort((a, b) => a.geoName.localeCompare(b.geoName));
+
+      const existingHolidays = calendarStorage.loadHolidayMasters();
+      const mergedHolidayMasters = Array.from(
+        new Map(
+          [...existingHolidays, ...holidays]
+            .map((item) => ({
+              dateISO: item.dateISO.trim(),
+              holidayName: item.holidayName.trim(),
+              geoName: item.geoName.trim(),
+            }))
+            .filter((item) => item.dateISO && item.holidayName && item.geoName)
+            .map((item) => [
+              `${item.dateISO}__${item.geoName.toLowerCase()}__${item.holidayName.toLowerCase()}`,
+              item,
+            ])
+        ).values()
+      ).sort((a, b) => {
+        if (a.dateISO !== b.dateISO) return a.dateISO.localeCompare(b.dateISO);
+        if (a.geoName !== b.geoName) return a.geoName.localeCompare(b.geoName);
+        return a.holidayName.localeCompare(b.holidayName);
+      });
+
       const metadata = {
         ...normalized.metadata,
         fileNames,
-        holidayCount: holidays.length,
-        warnings: [...normalized.warnings, ...parserWarnings],
+        sessionCount: mergedSessions.length,
+        programCount: mergedProgramMasters.length,
+        facilitatorCount: mergedFacilitatorMasters.length,
+        geoCount: mergedGeoMasters.length,
+        holidayCount: mergedHolidayMasters.length,
+        warnings: [
+          ...normalized.warnings,
+          ...parserWarnings,
+          importedCycleIds.size > 0
+            ? `Imported cycles updated (${importCycleMergeMode}): ${Array.from(importedCycleIds).join(", ")}. Other cycle sessions were preserved.`
+            : "Imported sessions fell back to selected cycle assignment.",
+        ],
       };
 
       const nextBundle: CalendarDataBundle = {
-        sessions: normalized.sessions,
-        programMasters: normalized.masters.programs,
-        facilitatorMasters: normalized.masters.facilitators,
-        geoMasters: normalized.masters.geos,
-        holidayMasters: holidays,
+        sessions: mergedSessions,
+        programMasters: mergedProgramMasters,
+        facilitatorMasters: mergedFacilitatorMasters,
+        geoMasters: mergedGeoMasters,
+        holidayMasters: mergedHolidayMasters,
         metadata,
       };
 
@@ -142,6 +320,45 @@ export default function AdminImportPage() {
       </section>
 
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+        {activePlanningCycles.length > 0 && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex flex-col gap-1">
+              <PlanningCycleSelector
+                cycles={activePlanningCycles}
+                value={selectedPlanningCycleId}
+                onChange={setSelectedPlanningCycleId}
+                label="Import Quarter"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-600">
+                Quarter Assignment Mode
+              </label>
+              <select
+                value={importCycleMode}
+                onChange={(event) => setImportCycleMode(event.target.value as ImportCycleMode)}
+                className="rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-700"
+              >
+                <option value="selected">Use selected quarter for all imported sessions</option>
+                <option value="auto">Auto-detect by session date (fallback to selected quarter)</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1 md:col-span-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-600">
+                Import Safeguard (Target Cycles)
+              </label>
+              <select
+                value={importCycleMergeMode}
+                onChange={(event) => setImportCycleMergeMode(event.target.value as ImportCycleMergeMode)}
+                className="rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-700"
+              >
+                <option value="replace">Replace sessions in imported cycle(s) (recommended)</option>
+                <option value="append">Append to imported cycle(s) (upsert by session ID)</option>
+              </select>
+            </div>
+          </div>
+        )}
+
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">Be.Cognizant CSV (.csv)</label>

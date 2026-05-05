@@ -2,16 +2,25 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { calendarStorage } from "@/lib/storage";
+import { PlanningCycleSelector } from "@/components/ui/PlanningCycleSelector";
 import type {
   FacilitatorMaster,
   GeoMaster,
   HolidayMaster,
   ImportMetadata,
+  PlanningCycle,
   ProgramMaster,
 } from "@/types";
 // --- Capability Master Type ---
 export interface CapabilityMaster {
   capabilityName: string;
+}
+
+interface PlanningCycleForm {
+  id: string;
+  label: string;
+  startDate: string;
+  endDate: string;
 }
 
 const emptyProgram: ProgramMaster = {
@@ -20,6 +29,7 @@ const emptyProgram: ProgramMaster = {
   objectives: "",
   formatDuration: "",
   defaultFacilitator: "",
+  planningCycleIds: [],
 };
 
 const emptyCapability: CapabilityMaster = {
@@ -32,6 +42,13 @@ const emptyHoliday: HolidayMaster = {
   geoName: "",
 };
 
+const emptyPlanningCycleForm: PlanningCycleForm = {
+  id: "",
+  label: "",
+  startDate: "",
+  endDate: "",
+};
+
 function normalizeKey(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -40,12 +57,39 @@ function sortBy<T>(items: T[], selector: (item: T) => string): T[] {
   return [...items].sort((a, b) => selector(a).localeCompare(selector(b)));
 }
 
+function normalizePlanningCycleIds(
+  planningCycleIds: string[] | undefined,
+  fallbackCycleId: string
+): string[] {
+  const unique = Array.from(
+    new Set((planningCycleIds ?? []).map((item) => item.trim()).filter(Boolean))
+  );
+  return unique.length > 0 ? unique : [fallbackCycleId];
+}
+
+function parsePlanningCycleIds(rawValue: string): string[] {
+  return Array.from(
+    new Set(
+      rawValue
+        .split(/[|,]/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
 export default function MastersCrudClient() {
   const [programs, setPrograms] = useState<ProgramMaster[]>([]);
   const [facilitators, setFacilitators] = useState<FacilitatorMaster[]>([]);
   const [geos, setGeos] = useState<GeoMaster[]>([]);
   const [holidays, setHolidays] = useState<HolidayMaster[]>([]);
   const [metadata, setMetadata] = useState<ImportMetadata | null>(null);
+  const [planningCycles, setPlanningCycles] = useState<PlanningCycle[]>([]);
+  const [selectedPlanningCycleId, setSelectedPlanningCycleId] = useState("");
+  const [planningCycleForm, setPlanningCycleForm] = useState<PlanningCycleForm>(
+    emptyPlanningCycleForm
+  );
+  const [editingPlanningCycleId, setEditingPlanningCycleId] = useState<string | null>(null);
 
   const [capabilities, setCapabilities] = useState<CapabilityMaster[]>([]);
 
@@ -78,11 +122,32 @@ export default function MastersCrudClient() {
 
   useEffect(() => {
     reloadMasters();
+    const cycles = calendarStorage.loadPlanningCycles();
+    const activeCycleId = calendarStorage.getActivePlanningCycleId();
+    setPlanningCycles(cycles);
+    setSelectedPlanningCycleId(activeCycleId);
   }, []);
+
+  function handlePlanningCycleChange(cycleId: string) {
+    setSelectedPlanningCycleId(cycleId);
+    calendarStorage.setActivePlanningCycleId(cycleId);
+  }
 
   const sortedPrograms = useMemo(
     () => sortBy(programs, (p) => p.programName),
     [programs]
+  );
+
+  const cycleScopedPrograms = useMemo(() => {
+    if (!selectedPlanningCycleId) return sortedPrograms;
+    return sortedPrograms.filter((program) =>
+      (program.planningCycleIds ?? []).includes(selectedPlanningCycleId)
+    );
+  }, [selectedPlanningCycleId, sortedPrograms]);
+
+  const activePlanningCycles = useMemo(
+    () => planningCycles.filter((cycle) => !cycle.isArchived),
+    [planningCycles]
   );
 
   const sortedCapabilities = useMemo(
@@ -143,6 +208,141 @@ export default function MastersCrudClient() {
     setStatus({ type: "error", message });
   }
 
+  function savePlanningCycles(nextCycles: PlanningCycle[], successMessage?: string) {
+    calendarStorage.savePlanningCycles(nextCycles);
+    setPlanningCycles(nextCycles);
+    if (successMessage) setSuccess(successMessage);
+  }
+
+  function setPlanningCycleActive(cycleId: string) {
+    const nextCycles = planningCycles.map((cycle) => ({
+      ...cycle,
+      isActive: cycle.id === cycleId,
+    }));
+    savePlanningCycles(nextCycles);
+    setSelectedPlanningCycleId(cycleId);
+    calendarStorage.setActivePlanningCycleId(cycleId);
+  }
+
+  function handleCreateOrUpdatePlanningCycle() {
+    setStatus(null);
+    const id = planningCycleForm.id.trim();
+    const label = planningCycleForm.label.trim();
+    const startDate = planningCycleForm.startDate.trim();
+    const endDate = planningCycleForm.endDate.trim();
+
+    if (!id || !label || !startDate || !endDate) {
+      setError("Cycle id, label, start date, and end date are required.");
+      return;
+    }
+
+    if (startDate > endDate) {
+      setError("Cycle start date must be on or before end date.");
+      return;
+    }
+
+    const duplicateId = planningCycles.some(
+      (cycle) => normalizeKey(cycle.id) === normalizeKey(id) && cycle.id !== editingPlanningCycleId
+    );
+    if (duplicateId) {
+      setError("Cycle id already exists.");
+      return;
+    }
+
+    const payload: PlanningCycle = {
+      id,
+      label,
+      startDate,
+      endDate,
+      isArchived: false,
+      isActive: editingPlanningCycleId
+        ? planningCycles.find((cycle) => cycle.id === editingPlanningCycleId)?.isActive ?? false
+        : false,
+    };
+
+    const nextCycles = editingPlanningCycleId
+      ? planningCycles.map((cycle) => (cycle.id === editingPlanningCycleId ? payload : cycle))
+      : [...planningCycles, payload];
+
+    savePlanningCycles(nextCycles, editingPlanningCycleId ? "Planning cycle updated." : "Planning cycle added.");
+    setPlanningCycleForm(emptyPlanningCycleForm);
+    setEditingPlanningCycleId(null);
+  }
+
+  function startEditPlanningCycle(cycle: PlanningCycle) {
+    setPlanningCycleForm({
+      id: cycle.id,
+      label: cycle.label,
+      startDate: cycle.startDate,
+      endDate: cycle.endDate,
+    });
+    setEditingPlanningCycleId(cycle.id);
+    setStatus(null);
+  }
+
+  function togglePlanningCycleArchive(cycleId: string) {
+    const target = planningCycles.find((cycle) => cycle.id === cycleId);
+    if (!target) return;
+
+    const willArchive = !target.isArchived;
+    const nextCycles = planningCycles.map((cycle) =>
+      cycle.id === cycleId
+        ? { ...cycle, isArchived: willArchive, isActive: willArchive ? false : cycle.isActive }
+        : cycle
+    );
+
+    const available = nextCycles.filter((cycle) => !cycle.isArchived);
+    if (available.length === 0) {
+      setError("At least one active planning cycle is required.");
+      return;
+    }
+
+    const nextActiveId =
+      willArchive && selectedPlanningCycleId === cycleId
+        ? (available[0]?.id ?? selectedPlanningCycleId)
+        : selectedPlanningCycleId;
+
+    const normalized = nextCycles.map((cycle) => ({
+      ...cycle,
+      isActive: cycle.id === nextActiveId,
+    }));
+
+    savePlanningCycles(
+      normalized,
+      willArchive ? "Planning cycle archived." : "Planning cycle restored."
+    );
+    setSelectedPlanningCycleId(nextActiveId);
+    calendarStorage.setActivePlanningCycleId(nextActiveId);
+  }
+
+  function deletePlanningCycle(cycleId: string) {
+    const nextCycles = planningCycles.filter((cycle) => cycle.id !== cycleId);
+    const available = nextCycles.filter((cycle) => !cycle.isArchived);
+    if (available.length === 0) {
+      setError("Cannot delete the last available planning cycle.");
+      return;
+    }
+
+    const nextActiveId =
+      selectedPlanningCycleId === cycleId
+        ? (available[0]?.id ?? selectedPlanningCycleId)
+        : selectedPlanningCycleId;
+
+    const normalized = nextCycles.map((cycle) => ({
+      ...cycle,
+      isActive: cycle.id === nextActiveId,
+    }));
+
+    savePlanningCycles(normalized, "Planning cycle deleted.");
+    setSelectedPlanningCycleId(nextActiveId);
+    calendarStorage.setActivePlanningCycleId(nextActiveId);
+
+    if (editingPlanningCycleId === cycleId) {
+      setPlanningCycleForm(emptyPlanningCycleForm);
+      setEditingPlanningCycleId(null);
+    }
+  }
+
   function handleCreateOrUpdateProgram() {
     setStatus(null);
     const name = programForm.programName.trim();
@@ -159,6 +359,10 @@ export default function MastersCrudClient() {
       objectives: programForm.objectives?.trim() || undefined,
       formatDuration: programForm.formatDuration?.trim() || undefined,
       defaultFacilitator: programForm.defaultFacilitator?.trim() || undefined,
+      planningCycleIds: normalizePlanningCycleIds(
+        programForm.planningCycleIds,
+        selectedPlanningCycleId || calendarStorage.getActivePlanningCycleId()
+      ),
     };
 
     const duplicateExists = existing.some(
@@ -195,6 +399,7 @@ export default function MastersCrudClient() {
       objectives: program.objectives ?? "",
       formatDuration: program.formatDuration ?? "",
       defaultFacilitator: program.defaultFacilitator ?? "",
+      planningCycleIds: program.planningCycleIds ?? [],
     });
     setEditingProgramName(program.programName);
     setStatus(null);
@@ -484,6 +689,7 @@ export default function MastersCrudClient() {
   }
 
   function dedupePrograms(items: ProgramMaster[]): ProgramMaster[] {
+    const fallbackCycleId = selectedPlanningCycleId || calendarStorage.getActivePlanningCycleId();
     const byName = new Map<string, ProgramMaster>();
     for (const item of items) {
       const programName = item.programName?.trim();
@@ -494,6 +700,7 @@ export default function MastersCrudClient() {
         objectives: item.objectives?.trim() || undefined,
         formatDuration: item.formatDuration?.trim() || undefined,
         defaultFacilitator: item.defaultFacilitator?.trim() || undefined,
+        planningCycleIds: normalizePlanningCycleIds(item.planningCycleIds, fallbackCycleId),
       });
     }
     return Array.from(byName.values());
@@ -550,6 +757,7 @@ export default function MastersCrudClient() {
           Objectives: item.objectives ?? "",
           "Format Duration": item.formatDuration ?? "",
           "Default Facilitator": item.defaultFacilitator ?? "",
+          "Planning Cycle Ids": (item.planningCycleIds ?? []).join("|"),
         }))
       );
       const facilitatorsSheet = XLSX.utils.json_to_sheet(
@@ -614,13 +822,21 @@ export default function MastersCrudClient() {
 
     downloadCsv(
       `masters-programs-${stamp}.csv`,
-      ["Program Name", "Capability Name", "Objectives", "Format Duration", "Default Facilitator"],
+      [
+        "Program Name",
+        "Capability Name",
+        "Objectives",
+        "Format Duration",
+        "Default Facilitator",
+        "Planning Cycle Ids",
+      ],
       sortedPrograms.map((item) => [
         item.programName,
         item.capabilityName ?? "",
         item.objectives ?? "",
         item.formatDuration ?? "",
         item.defaultFacilitator ?? "",
+        (item.planningCycleIds ?? []).join("|"),
       ])
     );
 
@@ -687,6 +903,9 @@ export default function MastersCrudClient() {
           objectives: String(row["Objectives"] ?? "").trim() || undefined,
           formatDuration: String(row["Format Duration"] ?? "").trim() || undefined,
           defaultFacilitator: String(row["Default Facilitator"] ?? "").trim() || undefined,
+          planningCycleIds: parsePlanningCycleIds(
+            String(row["Planning Cycle Ids"] ?? row["Planning Cycle"] ?? "")
+          ),
         }));
         const normalized = dedupePrograms(mapped);
         if (normalized.length > 0) {
@@ -843,6 +1062,16 @@ export default function MastersCrudClient() {
         <p className="mt-1 text-xs text-gray-500">
           Import supports `.xlsx` (sheet names: Programs, Facilitators, Geos, Holidays) or one master `.csv` using exported headers.
         </p>
+        {activePlanningCycles.length > 0 && (
+          <div className="mt-3 max-w-xs">
+            <PlanningCycleSelector
+              cycles={activePlanningCycles}
+              value={selectedPlanningCycleId}
+              onChange={handlePlanningCycleChange}
+              label="Planning Cycle"
+            />
+          </div>
+        )}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <label className="text-xs font-semibold text-gray-700" htmlFor="masters-import-mode">
             Import Mode
@@ -949,6 +1178,121 @@ export default function MastersCrudClient() {
       )}
 
       <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-gray-900">Planning Cycle Master</h2>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <input
+            type="text"
+            value={planningCycleForm.id}
+            onChange={(event) =>
+              setPlanningCycleForm((prev) => ({ ...prev, id: event.target.value }))
+            }
+            placeholder="Cycle id (e.g., Q3-2026)"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            disabled={Boolean(editingPlanningCycleId)}
+          />
+          <input
+            type="text"
+            value={planningCycleForm.label}
+            onChange={(event) =>
+              setPlanningCycleForm((prev) => ({ ...prev, label: event.target.value }))
+            }
+            placeholder="Cycle label"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
+            type="date"
+            value={planningCycleForm.startDate}
+            onChange={(event) =>
+              setPlanningCycleForm((prev) => ({ ...prev, startDate: event.target.value }))
+            }
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
+            type="date"
+            value={planningCycleForm.endDate}
+            onChange={(event) =>
+              setPlanningCycleForm((prev) => ({ ...prev, endDate: event.target.value }))
+            }
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            onClick={handleCreateOrUpdatePlanningCycle}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            {editingPlanningCycleId ? "Update Cycle" : "Add Cycle"}
+          </button>
+          <button
+            onClick={() => {
+              setPlanningCycleForm(emptyPlanningCycleForm);
+              setEditingPlanningCycleId(null);
+              setStatus(null);
+            }}
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Reset
+          </button>
+        </div>
+
+        <div className="mt-5 max-h-72 overflow-auto rounded-md border border-gray-200">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50 text-left text-gray-700">
+                <th className="px-3 py-2">Id</th>
+                <th className="px-3 py-2">Label</th>
+                <th className="px-3 py-2">Range</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {planningCycles.map((cycle) => (
+                <tr key={cycle.id} className="border-b border-gray-100">
+                  <td className="px-3 py-2 font-medium text-gray-900">{cycle.id}</td>
+                  <td className="px-3 py-2 text-gray-700">{cycle.label}</td>
+                  <td className="px-3 py-2 text-gray-700">{cycle.startDate} → {cycle.endDate}</td>
+                  <td className="px-3 py-2 text-gray-700">
+                    {cycle.isArchived ? "Archived" : cycle.isActive ? "Active" : "Available"}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => startEditPlanningCycle(cycle)}
+                        className="rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        Edit
+                      </button>
+                      {!cycle.isArchived && (
+                        <button
+                          onClick={() => setPlanningCycleActive(cycle.id)}
+                          className="rounded border border-indigo-300 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+                        >
+                          Set Active
+                        </button>
+                      )}
+                      <button
+                        onClick={() => togglePlanningCycleArchive(cycle.id)}
+                        className="rounded border border-amber-300 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50"
+                      >
+                        {cycle.isArchived ? "Restore" : "Archive"}
+                      </button>
+                      <button
+                        onClick={() => deletePlanningCycle(cycle.id)}
+                        className="rounded border border-red-300 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">Create / Update Program</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <input
@@ -995,6 +1339,19 @@ export default function MastersCrudClient() {
             placeholder="Objectives"
             className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
+          <select
+            value={programForm.planningCycleIds?.[0] ?? selectedPlanningCycleId}
+            onChange={(e) =>
+              setProgramForm((prev) => ({ ...prev, planningCycleIds: [e.target.value] }))
+            }
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          >
+            {activePlanningCycles.map((cycle) => (
+              <option key={cycle.id} value={cycle.id}>
+                {cycle.label}
+              </option>
+            ))}
+          </select>
         </div>
         <p className="mt-2 text-xs text-gray-500">
           Tip: If a program has no capability mapping, Create Sessions will not auto-select capability for that program.
@@ -1023,6 +1380,7 @@ export default function MastersCrudClient() {
             <thead>
               <tr className="border-b bg-gray-50 text-left text-gray-700">
                 <th className="px-3 py-2">Program</th>
+                <th className="px-3 py-2">Cycle</th>
                 <th className="px-3 py-2">Capability</th>
                 <th className="px-3 py-2">Format/Duration</th>
                 <th className="px-3 py-2">Default Facilitator</th>
@@ -1030,9 +1388,10 @@ export default function MastersCrudClient() {
               </tr>
             </thead>
             <tbody>
-              {sortedPrograms.map((program) => (
+              {cycleScopedPrograms.map((program) => (
                 <tr key={program.programName} className="border-b border-gray-100">
                   <td className="px-3 py-2 font-medium text-gray-900">{program.programName}</td>
+                  <td className="px-3 py-2 text-gray-700">{(program.planningCycleIds ?? []).join(", ") || "-"}</td>
                   <td className="px-3 py-2 text-gray-700">{program.capabilityName ?? "-"}</td>
                   <td className="px-3 py-2 text-gray-700">{program.formatDuration ?? "-"}</td>
                   <td className="px-3 py-2 text-gray-700">{program.defaultFacilitator ?? "-"}</td>

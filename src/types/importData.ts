@@ -59,6 +59,16 @@ export interface ProgramMaster {
   objectives?: string;
   formatDuration?: string;
   defaultFacilitator?: string;
+  planningCycleIds?: string[];
+}
+
+export interface PlanningCycle {
+  id: string;
+  label: string;
+  startDate: string;
+  endDate: string;
+  isActive?: boolean;
+  isArchived?: boolean;
 }
 
 export interface FacilitatorMaster {

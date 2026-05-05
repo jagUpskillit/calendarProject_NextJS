@@ -26,6 +26,7 @@ export type {
   BeCogParseResult,
   CsvParseResult,
   ProgramMaster,
+  PlanningCycle,
   FacilitatorMaster,
   GeoMaster,
   HolidayMaster,

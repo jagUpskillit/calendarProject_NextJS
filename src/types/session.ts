@@ -100,6 +100,9 @@ export interface Session {
   /** Capability / competency area, e.g. "Cloud", "Data & AI", "Leadership" */
   capability?: string;
 
+  /** Planning cycle identifier, e.g. "Q2-2026" */
+  planningCycleId?: string;
+
   /**
    * Taxonomy tags for search and filtering.
    * Auto-derived from geo, targetAudience, capability, and programName words.

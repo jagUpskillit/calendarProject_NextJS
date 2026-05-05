@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
-import type { Session, DeliveryMode, ImportMetadata } from "@/types";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import type { Session, DeliveryMode, ImportMetadata, PlanningCycle } from "@/types";
 import { SessionCard } from "@/components/sessions/SessionCard";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 import { AssistantLitePanel } from "@/components/assistant/AssistantLitePanel";
+import { PlanningCycleSelector } from "@/components/ui/PlanningCycleSelector";
 import { getSessionRepository } from "@/lib/repository";
 import { calendarStorage } from "@/lib/storage";
 
@@ -45,6 +46,8 @@ export function HomeClient() {
   const [importMetadata, setImportMetadata] = useState<ImportMetadata | null>(null);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [planningCycles, setPlanningCycles] = useState<PlanningCycle[]>([]);
+  const [selectedPlanningCycleId, setSelectedPlanningCycleId] = useState("");
 
   // ── filter state ──
   const [query, setQuery]               = useState("");
@@ -68,6 +71,10 @@ export function HomeClient() {
           return true;
         });
         setAllSessions(raw);
+        const cycles = calendarStorage.loadPlanningCycles();
+        const activeCycleId = calendarStorage.getActivePlanningCycleId();
+        setPlanningCycles(cycles);
+        setSelectedPlanningCycleId(activeCycleId);
 
         const imported = calendarStorage.hasImportedSessions();
         setIsImportedData(imported);
@@ -106,9 +113,24 @@ export function HomeClient() {
     })();
   }, []);
 
+  const activePlanningCycles = useMemo(
+    () => planningCycles.filter((cycle) => !cycle.isArchived),
+    [planningCycles]
+  );
+
+  const cycleScopedSessions = useMemo(() => {
+    if (!selectedPlanningCycleId) return allSessions;
+    return allSessions.filter((session) => session.planningCycleId === selectedPlanningCycleId);
+  }, [allSessions, selectedPlanningCycleId]);
+
+  const handlePlanningCycleChange = useCallback((cycleId: string) => {
+    setSelectedPlanningCycleId(cycleId);
+    calendarStorage.setActivePlanningCycleId(cycleId);
+  }, []);
+
   // ── apply filters client-side whenever filter state or data changes ──
   const applyFilters = useCallback(() => {
-    let result = [...allSessions];
+    let result = [...cycleScopedSessions];
 
     if (query.trim()) {
       const q = query.toLowerCase();
@@ -143,7 +165,7 @@ export function HomeClient() {
     });
 
     setFiltered(result);
-  }, [allSessions, query, geo, audience, facilitator, capability, deliveryMode, sortField]);
+  }, [cycleScopedSessions, query, geo, audience, facilitator, capability, deliveryMode, sortField]);
 
   useEffect(() => { applyFilters(); }, [applyFilters]);
 
@@ -152,7 +174,7 @@ export function HomeClient() {
     setCapability(""); setDeliveryMode(""); setSortField("date");
   };
 
-  const createdSessions = allSessions.filter(
+  const createdSessions = cycleScopedSessions.filter(
     (session) => session.source?.fileName === "create-session-form"
   );
 
@@ -245,10 +267,20 @@ export function HomeClient() {
           </div>
           <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white/90 backdrop-blur-sm">
             <p className="text-xs uppercase tracking-[0.22em] text-white/65">Catalog snapshot</p>
-            <p className="mt-1 text-2xl font-semibold">{allSessions.length}</p>
-            <p className="text-xs text-white/75">sessions currently loaded</p>
+            <p className="mt-1 text-2xl font-semibold">{cycleScopedSessions.length}</p>
+            <p className="text-xs text-white/75">sessions in selected cycle</p>
           </div>
         </div>
+        {activePlanningCycles.length > 0 && (
+          <div className="relative mt-5 max-w-xs">
+            <PlanningCycleSelector
+              cycles={activePlanningCycles}
+              value={selectedPlanningCycleId}
+              onChange={handlePlanningCycleChange}
+              label="Planning Cycle"
+            />
+          </div>
+        )}
         <div className="relative mt-5 rounded-2xl border border-white/16 bg-white/10 px-4 py-3 text-xs text-white/90 backdrop-blur-sm">
           {isImportedData && importMetadata ? (
             <>
@@ -340,7 +372,7 @@ export function HomeClient() {
         <div className="flex items-center gap-3">
           <span>
             Showing <strong className="text-slate-900">{filtered.length}</strong> of{" "}
-            <strong className="text-slate-900">{allSessions.length}</strong> sessions
+            <strong className="text-slate-900">{cycleScopedSessions.length}</strong> sessions
           </span>
           {hasActiveFilters && (
             <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">Filters active</span>

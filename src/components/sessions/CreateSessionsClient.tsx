@@ -3,12 +3,14 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { calendarStorage } from "@/lib/storage/CalendarStorage";
+import { PlanningCycleSelector } from "@/components/ui/PlanningCycleSelector";
 import type {
   ProgramMaster,
   FacilitatorMaster,
   HolidayMaster,
   ImportMetadata,
   Session,
+  PlanningCycle,
 } from "@/types";
 
 
@@ -79,6 +81,8 @@ export default function CreateSessionsClient() {
   const [holidays, setHolidays] = useState<HolidayMaster[]>([]);
   const [metadata, setMetadata] = useState<ImportMetadata | null>(null);
   const [historicalSessions, setHistoricalSessions] = useState<Session[]>([]);
+  const [planningCycles, setPlanningCycles] = useState<PlanningCycle[]>([]);
+  const [selectedPlanningCycleId, setSelectedPlanningCycleId] = useState("");
 
   // UI state
   const [programSearch, setProgramSearch] = useState("");
@@ -107,6 +111,10 @@ export default function CreateSessionsClient() {
     const existingSessions = calendarStorage.loadSessions();
 
     setPrograms(progs);
+    const cycles = calendarStorage.loadPlanningCycles();
+    const activeCycleId = calendarStorage.getActivePlanningCycleId();
+    setPlanningCycles(cycles);
+    setSelectedPlanningCycleId(activeCycleId);
     setCapabilities(caps);
     setFacilitators(facils);
     setHolidays(hols);
@@ -114,26 +122,50 @@ export default function CreateSessionsClient() {
     setHistoricalSessions(existingSessions);
   }, []);
 
+  const handlePlanningCycleChange = useCallback((cycleId: string) => {
+    setSelectedPlanningCycleId(cycleId);
+    calendarStorage.setActivePlanningCycleId(cycleId);
+  }, []);
+
+  const cycleScopedPrograms = useMemo(() => {
+    if (!selectedPlanningCycleId) return programs;
+    return programs.filter((program) =>
+      (program.planningCycleIds ?? []).includes(selectedPlanningCycleId)
+    );
+  }, [programs, selectedPlanningCycleId]);
+
+  const cycleScopedHistoricalSessions = useMemo(() => {
+    if (!selectedPlanningCycleId) return historicalSessions;
+    return historicalSessions.filter(
+      (session) => session.planningCycleId === selectedPlanningCycleId
+    );
+  }, [historicalSessions, selectedPlanningCycleId]);
+
+  const activePlanningCycles = useMemo(
+    () => planningCycles.filter((cycle) => !cycle.isArchived),
+    [planningCycles]
+  );
+
   const normalizeText = (value: string): string => value.trim().toLowerCase();
 
   const findProgramByName = useCallback(
     (programName: string) =>
-      programs.find(
+      cycleScopedPrograms.find(
         (program) => normalizeText(program.programName) === normalizeText(programName)
       ),
-    [programs]
+    [cycleScopedPrograms]
   );
 
   const suggestedFacilitators = useMemo(() => {
     const programKey = normalizeText(form.programName || "");
     if (!programKey) return [];
 
-    const selectedProgram = programs.find(
+    const selectedProgram = cycleScopedPrograms.find(
       (program) => normalizeText(program.programName) === programKey
     );
 
     const counts = new Map<string, number>();
-    historicalSessions.forEach((session) => {
+    cycleScopedHistoricalSessions.forEach((session) => {
       if (normalizeText(session.programName || "") !== programKey) return;
       const name = session.facilitator?.trim();
       if (!name) return;
@@ -150,7 +182,7 @@ export default function CreateSessionsClient() {
     ].filter(Boolean);
 
     return [...new Map(seeded.map((name) => [normalizeText(name), name])).values()];
-  }, [form.programName, programs, historicalSessions]);
+  }, [form.programName, cycleScopedPrograms, cycleScopedHistoricalSessions]);
 
   const filteredSuggestedFacilitators = useMemo(() => {
     const lower = form.facilitator.toLowerCase().trim();
@@ -230,11 +262,11 @@ export default function CreateSessionsClient() {
   const filteredPrograms = useMemo(() => {
     const selectedCapabilityKey = normalizeText(form.capability || "");
     const capabilityScopedPrograms = selectedCapabilityKey
-      ? programs.filter(
+      ? cycleScopedPrograms.filter(
           (program) =>
             normalizeText(program.capabilityName ?? "") === selectedCapabilityKey
         )
-      : programs;
+      : cycleScopedPrograms;
 
     if (!programSearch.trim()) return capabilityScopedPrograms.slice(0, 10); // Show first 10 if no filter
     const lower = programSearch.toLowerCase();
@@ -243,7 +275,7 @@ export default function CreateSessionsClient() {
         p.programName.toLowerCase().includes(lower) ||
         (p.objectives && p.objectives.toLowerCase().includes(lower))
     );
-  }, [programs, programSearch, form.capability]);
+  }, [cycleScopedPrograms, programSearch, form.capability]);
 
   // Filter facilitators for dropdown
   const filteredFacilitators = useMemo(() => {
@@ -402,7 +434,7 @@ export default function CreateSessionsClient() {
       return;
     }
 
-    const selectedProgram = programs.find(
+    const selectedProgram = cycleScopedPrograms.find(
       (program) => program.programName.trim() === form.programName.trim()
     );
 
@@ -414,6 +446,7 @@ export default function CreateSessionsClient() {
     const newSession: Session = {
       id: sessionId,
       programName: form.programName.trim(),
+      planningCycleId: selectedPlanningCycleId || undefined,
       capability: form.capability.trim(),
       objectives: selectedProgram?.objectives,
       formatDuration: selectedProgram?.formatDuration,
@@ -580,6 +613,17 @@ export default function CreateSessionsClient() {
               <span>👤 {metadata.facilitatorCount} facilitators</span>
               <span>🌍 {metadata.geoCount} geos</span>
               <span>📅 {metadata.holidayCount} holidays</span>
+            </div>
+          )}
+
+          {activePlanningCycles.length > 0 && (
+            <div className="mt-4 max-w-xs">
+              <PlanningCycleSelector
+                cycles={activePlanningCycles}
+                value={selectedPlanningCycleId}
+                onChange={handlePlanningCycleChange}
+                label="Planning Cycle"
+              />
             </div>
           )}
         </div>

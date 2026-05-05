@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { ImportMetadata, Session } from "@/types";
+import type { ImportMetadata, PlanningCycle, Session } from "@/types";
 import { buildAssistantInsightReport } from "@/lib/assistant/insights";
 import { getSessionRepository } from "@/lib/repository";
 import { calendarStorage } from "@/lib/storage";
+import { PlanningCycleSelector } from "@/components/ui/PlanningCycleSelector";
 
 interface BreakdownRow {
   label: string;
@@ -25,6 +26,8 @@ const DEFAULT_FILTERS: InsightsFilters = {
   deliveryMode: "all",
   facilitator: "all",
 };
+
+const ALL_CYCLES_ID = "__all_cycles__";
 
 function formatMonthLabel(value: string) {
   if (value === "Undated") return value;
@@ -223,6 +226,8 @@ export function InsightsClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [importMetadata, setImportMetadata] = useState<ImportMetadata | null>(null);
+  const [planningCycles, setPlanningCycles] = useState<PlanningCycle[]>([]);
+  const [selectedPlanningCycleId, setSelectedPlanningCycleId] = useState("");
   const [filters, setFilters] = useState<InsightsFilters>(DEFAULT_FILTERS);
 
   useEffect(() => {
@@ -231,6 +236,10 @@ export function InsightsClient() {
         const loaded = await getSessionRepository().getAll();
         setSessions(loaded);
         setImportMetadata(calendarStorage.loadMetadata());
+        const cycles = calendarStorage.loadPlanningCycles();
+        const activeCycleId = calendarStorage.getActivePlanningCycleId();
+        setPlanningCycles(cycles);
+        setSelectedPlanningCycleId(activeCycleId);
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "Failed to load insights data");
       } finally {
@@ -239,16 +248,48 @@ export function InsightsClient() {
     })();
   }, []);
 
+  const selectablePlanningCycles = useMemo(
+    () => planningCycles.filter((cycle) => !cycle.isArchived),
+    [planningCycles]
+  );
+
+  const insightsCycleOptions = useMemo<PlanningCycle[]>(
+    () => [
+      {
+        id: ALL_CYCLES_ID,
+        label: "All Cycles",
+        startDate: "",
+        endDate: "",
+        isActive: false,
+        isArchived: false,
+      },
+      ...selectablePlanningCycles,
+    ],
+    [selectablePlanningCycles]
+  );
+
+  const cycleScopedSessions = useMemo(() => {
+    if (!selectedPlanningCycleId || selectedPlanningCycleId === ALL_CYCLES_ID) return sessions;
+    return sessions.filter((session) => session.planningCycleId === selectedPlanningCycleId);
+  }, [sessions, selectedPlanningCycleId]);
+
+  function handlePlanningCycleChange(cycleId: string) {
+    setSelectedPlanningCycleId(cycleId);
+    if (cycleId !== ALL_CYCLES_ID) {
+      calendarStorage.setActivePlanningCycleId(cycleId);
+    }
+  }
+
   const filteredSessions = useMemo(
     () =>
-      sessions.filter((session) => {
+      cycleScopedSessions.filter((session) => {
         if (!matchesFilter(session.geo, filters.geo, "Unspecified")) return false;
         if (!matchesFilter(session.capability, filters.capability, "Unspecified")) return false;
         if (!matchesFilter(session.deliveryMode, filters.deliveryMode, "Unknown")) return false;
         if (!matchesFilter(session.facilitator, filters.facilitator, "TBD")) return false;
         return true;
       }),
-    [filters, sessions]
+    [filters, cycleScopedSessions]
   );
 
   const report = useMemo(() => buildAssistantInsightReport(filteredSessions), [filteredSessions]);
@@ -264,12 +305,12 @@ export function InsightsClient() {
   const topGeos = geoBreakdown.slice(0, 5);
   const filterOptions = useMemo(
     () => ({
-      geo: uniqueValues(sessions.map((session) => session.geo ?? "Unspecified")),
-      capability: uniqueValues(sessions.map((session) => session.capability ?? "Unspecified")),
-      deliveryMode: uniqueValues(sessions.map((session) => session.deliveryMode ?? "Unknown")),
-      facilitator: uniqueValues(sessions.map((session) => session.facilitator ?? "TBD")),
+      geo: uniqueValues(cycleScopedSessions.map((session) => session.geo ?? "Unspecified")),
+      capability: uniqueValues(cycleScopedSessions.map((session) => session.capability ?? "Unspecified")),
+      deliveryMode: uniqueValues(cycleScopedSessions.map((session) => session.deliveryMode ?? "Unknown")),
+      facilitator: uniqueValues(cycleScopedSessions.map((session) => session.facilitator ?? "TBD")),
     }),
-    [sessions]
+    [cycleScopedSessions]
   );
   const activeFilterCount = useMemo(
     () => Object.values(filters).filter((value) => value !== "all").length,
@@ -336,8 +377,10 @@ export function InsightsClient() {
     const payload = {
       exportedAt: new Date().toISOString(),
       importedAt: importMetadata?.importedAt ?? null,
+      planningCycleId: selectedPlanningCycleId || null,
       filters,
       totalSessions: sessions.length,
+      cycleScopedSessions: cycleScopedSessions.length,
       filteredSessions: filteredSessions.length,
       report,
       breakdowns: {
@@ -393,7 +436,7 @@ export function InsightsClient() {
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Insights</h1>
             <p className="mt-2 max-w-2xl text-sm text-white/85">Business-style analysis of the imported training calendar, including concentration, coverage, and execution risks.</p>
             <p className="mt-3 text-sm text-white/90">
-              Showing <span className="font-semibold">{filteredSessions.length}</span> of <span className="font-semibold">{sessions.length}</span> sessions
+              Showing <span className="font-semibold">{filteredSessions.length}</span> of <span className="font-semibold">{cycleScopedSessions.length}</span> sessions
               {activeFilterCount > 0 ? ` across ${activeFilterCount} active filter${activeFilterCount === 1 ? "" : "s"}.` : "."}
             </p>
           </div>
@@ -412,6 +455,19 @@ export function InsightsClient() {
           ))}
         </div>
       </section>
+
+      {insightsCycleOptions.length > 0 && (
+        <section className="rounded-[28px] border border-indigo-100 bg-indigo-50/55 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.07)] backdrop-blur-sm">
+          <div className="max-w-xs">
+            <PlanningCycleSelector
+              cycles={insightsCycleOptions}
+              value={selectedPlanningCycleId}
+              onChange={handlePlanningCycleChange}
+              label="Planning Cycle"
+            />
+          </div>
+        </section>
+      )}
 
       <section className="rounded-[28px] border border-indigo-100 bg-indigo-50/55 p-6 shadow-[0_18px_40px_rgba(15,23,42,0.07)] backdrop-blur-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
